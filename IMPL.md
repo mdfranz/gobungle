@@ -52,6 +52,21 @@ The game uses a strict `40ms` ticker (`time.NewTicker`) to maintain a consistent
 ### 4. Data Flow
 The `Game` struct acts as a singleton hub. All logic functions are methods of `*Game`, allowing unified access to entities and the `tcell` screen buffer.
 
+### 5. Tcell Terminal Engine
+The game leverages `github.com/gdamore/tcell/v2` for low-level terminal manipulation, treating the terminal window as a character-based canvas.
+
+- **Screen Initialization**:
+  - `tcell.NewScreen()` creates the abstraction layer for the terminal.
+  - `s.Init()` puts the terminal into raw mode and hides the cursor.
+  - `defer s.Fini()` ensures the terminal state is restored on exit.
+- **Rendering Pipeline**:
+  - **Double Buffering**: Changes are written to an internal buffer via `s.SetContent(x, y, rune, nil, style)` and only pushed to the physical terminal when `s.Show()` is called at the end of the `draw()` phase.
+  - **Styles & Colors**: The `tcell.Style` object encapsulates foreground/background colors and attributes (e.g., `Bold`). Styles are calculated dynamically in `getMapStyle()` to allow "transparency" (overlaying sprites on background terrain).
+- **Event Orchestration**:
+  - `s.PollEvent()` runs in a dedicated `inputLoop` goroutine, blocking until a user action occurs.
+  - **Resize Handling**: `tcell.EventResize` is captured to dynamically update `g.width` and `g.height`, followed by `s.Sync()` to force a full redraw.
+  - **Input Mapping**: `tcell.EventKey` maps physical keys (Arrows, WASD, Space) to game actions like thrust, rotation, or weapon firing.
+
 ```mermaid
 sequenceDiagram
     participant T as Ticker
