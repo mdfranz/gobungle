@@ -1,5 +1,5 @@
 # Compiled binary
-gobungle
+/gobungle
 
 # Game logs
 gobungle.log
@@ -12,3 +12,6 @@ gobungle.log
 *.dylib
 *.test
 *.out
+
+# Antigravity CLI metadata
+.antigravitycli/

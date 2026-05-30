@@ -1,0 +1,162 @@
+package game
+
+import (
+	"log/slog"
+	"sync"
+	"time"
+
+	"github.com/gdamore/tcell/v2"
+)
+
+type Game struct {
+	mu             sync.Mutex
+	screen         tcell.Screen
+	width          int
+	height         int
+	quit           chan struct{}
+	heli           Helicopter
+	carrier        Carrier
+	bullets        []Bullet
+	missiles       []Missile
+	boats          []Boat
+	initialBoats   []Boat
+	island         Island
+	factories      []Factory
+	drones         []Drone
+	tanks          []Tank
+	staticAAs      []StaticAA
+	explosions     []Explosion
+	boatsSunk      int
+	Ticks          int
+	lockedBoat     *Boat
+	lockedFactory  *Factory
+	lockedTank     *Tank
+	lockedStaticAA *StaticAA
+}
+
+// New initializes the game world and returns a ready-to-run Game.
+// The caller owns the screen lifecycle (Init/Fini).
+func New(screen tcell.Screen) *Game {
+	w, h := screen.Size()
+
+	carrier := Carrier{
+		X:      w / 6,
+		Y:      h / 4,
+		Width:  26,
+		Height: 6,
+		Health: 100.0,
+	}
+
+	padX := carrier.X + carrier.Width/3
+	padY := carrier.Y + carrier.Height/2
+
+	heli := Helicopter{
+		X:           float64(padX),
+		Y:           float64(padY),
+		Dir:         0,
+		Landed:      true,
+		Fuel:        100.0,
+		Armor:       100.0,
+		MissileAmmo: 4,
+	}
+
+	boats := []Boat{
+		{X: 15, Y: float64(h - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 200},
+		{X: 20, Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 400},
+		{X: 25, Y: float64(h - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 600},
+	}
+
+	factories := []Factory{
+		{X: float64(w - 15), Y: float64(h / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 100, DronesRemaining: 8},
+		{X: float64(w - 7), Y: float64(h / 2), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 150, DronesRemaining: 8},
+		{X: float64(w - 15), Y: float64(h * 7 / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 200, DronesRemaining: 8},
+	}
+
+	drones := make([]Drone, 0, len(factories)*2+2)
+	for i, f := range factories {
+		drones = append(drones, Drone{X: f.X + 8.0, Y: f.Y, Active: true, Angle: 0.0, FactoryIdx: i})
+		drones = append(drones, Drone{X: f.X - 8.0, Y: f.Y, Active: true, Angle: 3.14159, FactoryIdx: i})
+	}
+	cx := float64(carrier.X + carrier.Width/2)
+	cy := float64(carrier.Y + carrier.Height/2)
+	drones = append(drones, Drone{X: cx + 12.0, Y: cy, Active: true, Angle: 0.0, FactoryIdx: -1})
+	drones = append(drones, Drone{X: cx - 12.0, Y: cy, Active: true, Angle: 3.14159, FactoryIdx: -1})
+
+	tanks := []Tank{
+		{X: float64(w - 15), Y: float64(h * 5 / 16), VY: 0.04, Health: 4, MaxHealth: 4, Active: true, PatrolDir: 0, MinCoord: float64(h / 8), MaxCoord: float64(h / 2)},
+		{X: float64(w - 15), Y: float64(h * 11 / 16), VY: -0.04, Health: 4, MaxHealth: 4, Active: true, PatrolDir: 0, MinCoord: float64(h / 2), MaxCoord: float64(h * 7 / 8)},
+		{X: float64(w - 11), Y: float64(h / 2), VX: 0.06, Health: 4, MaxHealth: 4, Active: true, PatrolDir: 1, MinCoord: float64(w - 15), MaxCoord: float64(w - 7)},
+	}
+
+	g := &Game{
+		screen:       screen,
+		width:        w,
+		height:       h,
+		quit:         make(chan struct{}),
+		heli:         heli,
+		carrier:      carrier,
+		bullets:      make([]Bullet, 0, 16),
+		missiles:     make([]Missile, 0, 2),
+		boats:        boats,
+		initialBoats: make([]Boat, len(boats)),
+		island:       Island{Active: true},
+		factories:    factories,
+		drones:       drones,
+		tanks:        tanks,
+		explosions:   make([]Explosion, 0, 8),
+	}
+	copy(g.initialBoats, boats)
+	g.initStaticAAs()
+	return g
+}
+
+// Run starts the physics/render loop and blocks on the input loop.
+func (g *Game) Run() {
+	go g.gameLoop()
+	g.inputLoop()
+}
+
+// gameLoop runs on a strict 40ms ticker (25 FPS) for physics and rendering.
+func (g *Game) gameLoop() {
+	ticker := time.NewTicker(40 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-g.quit:
+			return
+		case <-ticker.C:
+			g.mu.Lock()
+			g.width, g.height = g.screen.Size()
+			g.updatePhysics()
+			g.draw()
+			g.mu.Unlock()
+		}
+	}
+}
+
+// inputLoop blocks on tcell event polling and routes events under the game lock.
+func (g *Game) inputLoop() {
+	for {
+		ev := g.screen.PollEvent()
+		switch ev := ev.(type) {
+		case *tcell.EventResize:
+			g.mu.Lock()
+			g.screen.Sync()
+			nw, nh := g.screen.Size()
+			g.width, g.height = nw, nh
+			slog.Info("Screen resized", "width", nw, "height", nh)
+			g.mu.Unlock()
+
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				slog.Info("Gobungle Game Shutting Down Gracefully")
+				close(g.quit)
+				return
+			}
+			g.mu.Lock()
+			g.handleKeyPress(ev)
+			g.mu.Unlock()
+		}
+	}
+}

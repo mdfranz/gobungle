@@ -14,17 +14,39 @@ The goal of Gobungle is to provide a responsive, physics-driven combat experienc
 
 ## Core Systems
 
+The game engine coordinates six tightly-coupled subsystems within the `Game` struct:
+
 ```mermaid
-graph TD
-    A[Game Loop] --> B[Physics Engine]
-    A --> C[Renderer]
-    D[Input Handler] --> E[Game State]
-    B --> E
-    C --> E
-    E --> F[Helicopter]
-    E --> G[Carrier]
-    E --> H[Enemy Boats]
-    E --> I[Projectiles/FX]
+graph TB
+    GL["Game Loop<br/>(40ms ticker)"]
+    GL -->|updatePhysics| PhysicsC["Physics Coordinator<br/>(physics.go)"]
+    GL -->|checkCollisions| Collision["Collision Detection<br/>(collision.go)"]
+    GL -->|draw| Render["Renderer<br/>(draw.go)"]
+    
+    PhysicsC --> Heli["Helicopter<br/>Dynamics"]
+    PhysicsC --> CarrierDef["Carrier Defense<br/>System"]
+    PhysicsC --> Enemies["Enemy Systems<br/>(enemies.go)"]
+    
+    Enemies --> Boats["Boat AI"]
+    Enemies --> Factories["Factory AI"]
+    Enemies --> Drones["Drone Orbits"]
+    Enemies --> Tanks["Tank Patrols"]
+    
+    GL -->|updateProjectiles| Projectiles["Projectile System<br/>(projectiles.go)"]
+    Projectiles --> Homing["Homing Logic<br/>CIWS Defense"]
+    
+    Collision -->|vs Boats/Helicopter| Damage["Apply Damage"]
+    Collision -->|vs Missiles| MissileDef["Missile Defeat<br/>Drone Shields"]
+    
+    Input["Input Handler<br/>(input.go)"]
+    Input -->|getLockedTarget| LockOn["Target Lock-On"]
+    
+    Render -->|read Game state| RenderAll["Terrain, Entities,<br/>HUD, Sprites"]
+    
+    style GL fill:#4a90e2
+    style Render fill:#50c878
+    style Collision fill:#e74c3c
+    style Input fill:#f39c12
 ```
 
 ### 1. Helicopter Flight System
@@ -48,3 +70,73 @@ The aircraft carrier is the player's home base and primary defense objective.
 - **Collision Detection:** Uses rectangular hitboxes for boats and circular/point hitboxes for the helicopter and projectiles.
 - **Progressive Difficulty:** Each time a fleet of boats is destroyed, the next wave respawns with increased movement speed.
 - **Visual Effects:** Procedural explosions and rotor animations enhance the feedback loop.
+
+## Realized Architecture: Modular Subsystems
+
+The engine has been refactored toward **Option 4 (Modular Interface-Driven Composition)**, organizing code by responsibility within a single `internal/game` package:
+
+### Current Structure
+
+```
+internal/game/
+├── game.go           — Game struct, New(), Run(), gameLoop(), inputLoop()
+├── types.go          — Entity types, direction vectors, sprite data
+├── physics.go        — Physics coordinator, helicopter, carrier defense
+├── enemies.go        — Boat, factory, drone, tank, static AA updates
+├── projectiles.go    — Bullet/missile movement, homing, CIWS
+├── collision.go      — All collision detection
+├── input.go          — Input handling, target lock-on
+└── draw.go           — Rendering, HUD, sprites
+```
+
+**Why This Approach Works:**
+- **Low Coupling:** Each subsystem is a cohesive set of methods on `*Game`. No shared state outside the struct.
+- **Minimal Disruption:** The `Game` struct remains the "hub," but its responsibilities are logically partitioned. Physics code is isolated from input handling, which is isolated from collision logic.
+- **Testability:** Individual subsystems like `homeMissileToTarget()` or `checkPlayerBulletVsTargets()` can be tested in isolation by constructing a `Game` with test state and calling methods directly.
+- **Separation of Concerns:**
+  - `physics.go`: Entity dynamics, world simulation
+  - `enemies.go`: Enemy AI, independent from player systems
+  - `projectiles.go`: Pure movement and steering logic
+  - `collision.go`: Hit detection, consequence handling (damage, sinking, etc.)
+  - `input.go`: User commands, target locking
+  - `draw.go`: Rendering only; reads game state, no mutations
+
+### Pointer Aliasing and Lock-On Targets
+
+The `Game` struct caches pointers to locked targets:
+```go
+lockedBoat     *Boat
+lockedFactory  *Factory
+lockedTank     *Tank
+lockedStaticAA *StaticAA
+```
+
+These are updated once per tick at the end of `updatePhysics()` via `getLockedTarget()`. This avoids repeated scan-and-filter operations during collision or weapon-firing checks. The pointers remain valid because the entity slices (`g.boats`, `g.factories`, etc.) never shrink in the middle of a tick—only at wave completion or round reset.
+
+### Future Scaling Paths
+
+If the game grows beyond ~50 entities, consider:
+
+#### 1. Entity Component System (ECS)
+- **When:** After 100+ entities or complex multi-role compositions (e.g., a boat that can also be a repair ship).
+- **Trade-off:** Significant rewrite, but enables dynamic entity behaviors and cache-friendly loops.
+- **Porting Effort:** Very High.
+
+#### 2. Event Bus + Async Systems
+- **When:** Multiple independent systems need to react to collisions (audio, particles, score, loot drops).
+- **Example:** Publish `CollisionEvent`, let particle system and score system subscribe independently.
+- **Trade-off:** Better decoupling, but requires careful state synchronization.
+- **Porting Effort:** High.
+
+#### 3. Functional / Immutable State
+- **When:** Replay, rewind, or deterministic network multiplayer is required.
+- **Trade-off:** Eliminates side-effect bugs, but GC pressure from state cloning.
+- **Porting Effort:** Medium to High.
+
+#### 4. Multi-threaded Physics (Work-stealing)
+- **When:** Physics tick time exceeds ~10ms on typical hardware.
+- **Example:** Partition entity updates by grid cell, run cell systems in parallel.
+- **Trade-off:** Reduces latency but adds complexity around concurrent collision detection.
+- **Porting Effort:** High.
+
+**Current Status:** The modular subsystem approach is sufficient for the game's current scope and provides a clear ladder for future refactoring without rewriting the entire engine.

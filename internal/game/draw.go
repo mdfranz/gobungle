@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"fmt"
@@ -6,6 +6,48 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 )
+
+func (g *Game) getCoastlineThreshold(y int) float64 {
+	h := float64(g.height - 4)
+	if h <= 0 {
+		h = 1
+	}
+	// Organic wiggle using combined trigonometric waves
+	wiggle := math.Sin(float64(y)*0.7)*2.0 + math.Cos(float64(y)*0.3)*1.0
+	
+	// Sine-curve bay coast: wide water bay in the center (y ≈ h/2), wrapping around north and south
+	return float64(g.width)/3.0 + math.Sin(float64(y)/h*math.Pi)*(float64(g.width)/2.2) + wiggle
+}
+
+func (g *Game) getCoastlineStyle(x, y int) (bool, bool) {
+	if !g.island.Active {
+		return false, false
+	}
+	threshold := g.getCoastlineThreshold(y)
+	if float64(x) >= threshold {
+		// Sand shore is the first 3 cells of the coastline landmass
+		isSand := float64(x) < threshold+3.0
+		return true, isSand
+	}
+	return false, false
+}
+
+func (g *Game) isRoad(x, y int) bool {
+	h := g.height - 4
+	w := g.width
+
+	// Vertical road center: x == w - 15. Width: 3 cells (x in [w-16, w-14]) from y = h/8 to h*7/8.
+	if x >= w-16 && x <= w-14 && y >= h/8 && y <= h*7/8 {
+		return true
+	}
+
+	// Horizontal road center: y == h/2. Width: 3 cells (y in [h/2-1, h/2+1]) from x = w-15 to w-7.
+	if y >= h/2-1 && y <= h/2+1 && x >= w-15 && x <= w-7 {
+		return true
+	}
+
+	return false
+}
 
 // getMapStyle returns background colors dynamically for transparency rendering
 func (g *Game) getMapStyle(x, y int) tcell.Style {
@@ -25,6 +67,21 @@ func (g *Game) getMapStyle(x, y int) tcell.Style {
 
 		if !leftTaper && !rightTaper {
 			return tcell.StyleDefault.Background(tcell.ColorNames["grey"]).Foreground(tcell.ColorNames["white"])
+		}
+	}
+
+	// Check if the coordinate falls on the bay coastline
+	if isLand, isSand := g.getCoastlineStyle(x, y); isLand {
+		if !isSand && g.isRoad(x, y) {
+			// Asphalt/Road background
+			return tcell.StyleDefault.Background(tcell.ColorNames["dimgray"])
+		}
+		if isSand {
+			// Sand shore style
+			return tcell.StyleDefault.Background(tcell.ColorNames["olive"]).Foreground(tcell.ColorNames["khaki"])
+		} else {
+			// Grassy interior style
+			return tcell.StyleDefault.Background(tcell.ColorNames["darkgreen"]).Foreground(tcell.ColorNames["limegreen"])
 		}
 	}
 
@@ -78,9 +135,55 @@ func (g *Game) draw() {
 						}
 					}
 				}
+			} else if isLand, isSand := g.getCoastlineStyle(x, y); isLand {
+				if !isSand && g.isRoad(x, y) {
+					// Asphalt/Road styling
+					hVal := g.height - 4
+					wVal := g.width
+					isVerticalCenter := (x == wVal - 15)
+					isHorizontalCenter := (y == hVal / 2)
+					
+					if (isVerticalCenter && y >= hVal/6 && y <= hVal*5/6 && y%2 == 0) ||
+					   (isHorizontalCenter && x >= wVal-15 && x <= wVal-8 && x%2 == 0) {
+						if isVerticalCenter {
+							r = '|'
+						} else {
+							r = '-'
+						}
+						style = tcell.StyleDefault.Background(tcell.ColorNames["dimgray"]).Foreground(tcell.ColorNames["yellow"])
+					} else {
+						// Subtle concrete grain dots
+						hash := (x*13 + y*17) % 6
+						if hash == 0 {
+							r = '.'
+							style = tcell.StyleDefault.Background(tcell.ColorNames["dimgray"]).Foreground(tcell.ColorNames["lightgrey"])
+						} else {
+							r = ' '
+							style = tcell.StyleDefault.Background(tcell.ColorNames["dimgray"]).Foreground(tcell.ColorNames["dimgray"])
+						}
+					}
+				} else if isSand {
+					// Sand shore ripple/pebbles
+					hash := (x*17 + y*13) % 4
+					if hash == 0 {
+						r = '.'
+					} else {
+						r = ' '
+					}
+				} else {
+					// Grass interior runes
+					hash := (x*7 + y*11) % 5
+					if hash == 0 {
+						r = ','
+					} else if hash == 1 {
+						r = '`'
+					} else {
+						r = ' '
+					}
+				}
 			} else {
 				// Sea waves
-				isWave := (x*9+y*13)%23 == 0
+				isWave := (x*9 + y*13) % 23 == 0
 				if isWave {
 					r = '~'
 				}
@@ -286,6 +389,18 @@ func (g *Game) draw() {
 		}
 	}
 
+	// A.2 Draw Island Military Factory Fortress
+	g.drawFactories()
+
+	// A.3 Draw Orbiting Air Defense Drones
+	g.drawDrones()
+
+	// A.4 Draw Patrolling Mobile Air Defense Tanks
+	g.drawTanks()
+
+	// A.5 Draw Static AA Gun Emplacements
+	g.drawStaticAA()
+
 	// B. Draw Bullets
 	for i := 0; i < len(g.bullets); i++ {
 		bullet := &g.bullets[i]
@@ -376,13 +491,13 @@ func (g *Game) draw() {
 	rotorChar := rotorFrames[h.RotorState]
 
 	for r := 0; r < 3; r++ {
-		for c := 0; c < 3; c++ {
+		for c := 0; c < 5; c++ {
 			char := sprites[h.Dir][r][c]
 			if char == ' ' {
 				continue // Transparent sprite cell
 			}
 
-			mx := hx + c - 1
+			mx := hx + c - 2
 			my := hy + r - 1
 
 			// Check screen boundary limits
@@ -390,8 +505,8 @@ func (g *Game) draw() {
 				continue
 			}
 
-			// Center cell of helicopter is the spinning main rotor
-			if r == 1 && c == 1 {
+			// Center column of the 5x3 helicopter is the spinning main rotor
+			if r == 1 && c == 2 {
 				char = rotorChar
 			}
 
@@ -402,15 +517,17 @@ func (g *Game) draw() {
 			var fg tcell.Color
 			switch char {
 			case '▲', '▼', '►', '◄':
-				fg = tcell.ColorYellow // Front cabin nose
-			case '|', '/', '\\':
-				if r == 1 && c == 1 {
+				fg = tcell.ColorWhite // Front cabin nose (Stealth white)
+			case '|', '/', '\\', '╪':
+				if r == 1 && c == 2 {
 					fg = tcell.ColorWhite // Rotor blades
 				} else {
-					fg = tcell.ColorPaleTurquoise // Tail rotor / boom
+					fg = tcell.ColorPaleTurquoise // Tail stabilizer rotor / wings
 				}
-			case '-', '_', '¯', '[', ']', '=':
-				fg = tcell.ColorSilver // Skids & support wings
+			case '-', '_', '¯', '[', ']', '=', '║':
+				fg = tcell.ColorSilver // Skids, support wings, tail boom
+			case '█', '▓', '▒', '╟', '╢':
+				fg = tcell.ColorSlateGray // Main armored fuselage (Stealth Slate Gray)
 			default:
 				fg = tcell.ColorWhite
 			}
@@ -578,11 +695,40 @@ func (g *Game) drawHUD() {
 	lockLabel := "   |   LOCK: "
 	g.drawString(offset, hudY+2, lockLabel, hudStyle)
 
-	lockedBoat := g.getLockedBoat()
+	lockedBoat, lockedFactory, lockedTank, lockedStaticAA := g.lockedBoat, g.lockedFactory, g.lockedTank, g.lockedStaticAA
 	lockStr := "NONE"
 	lockColor := tcell.ColorRed
 	if lockedBoat != nil {
-		lockStr = "READY"
+		lockStr = "BOAT"
+		lockColor = tcell.ColorGreen
+	} else if lockedFactory != nil {
+		fIdx := -1
+		for idx := range g.factories {
+			if &g.factories[idx] == lockedFactory {
+				fIdx = idx
+				break
+			}
+		}
+		activeDrones := 0
+		if fIdx != -1 {
+			for d := 0; d < len(g.drones); d++ {
+				if g.drones[d].Active && g.drones[d].FactoryIdx == fIdx {
+					activeDrones++
+				}
+			}
+		}
+		totalDrones := activeDrones + lockedFactory.DronesRemaining
+		if totalDrones > 0 {
+			lockStr = fmt.Sprintf("FACTORY (DRONES: %d/10)", totalDrones)
+		} else {
+			lockStr = "FACTORY (SHIELDS DOWN!)"
+		}
+		lockColor = tcell.ColorGreen
+	} else if lockedTank != nil {
+		lockStr = "TANK"
+		lockColor = tcell.ColorGreen
+	} else if lockedStaticAA != nil {
+		lockStr = "STATIC AA"
 		lockColor = tcell.ColorGreen
 	}
 	lockStyle := hudStyle.Foreground(lockColor).Bold(true)
@@ -625,8 +771,10 @@ func (g *Game) drawHUD() {
 
 // drawString is a helper to draw string labels cell by cell
 func (g *Game) drawString(x, y int, str string, style tcell.Style) {
-	for i, r := range str {
-		g.screen.SetContent(x+i, y, r, nil, style)
+	col := 0
+	for _, r := range str {
+		g.screen.SetContent(x+col, y, r, nil, style)
+		col++
 	}
 }
 
@@ -635,5 +783,329 @@ func (g *Game) drawCell(x, y int, r rune, fg tcell.Color) {
 	if x >= 0 && x < g.width && y >= 0 && y < g.height-4 {
 		bgStyle := g.getMapStyle(x, y)
 		g.screen.SetContent(x, y, r, nil, bgStyle.Foreground(fg))
+	}
+}
+
+// drawFactories renders active 7x3 industrial building sprites (smokestacks, glowing beacons, load gates, and rising smoke columns)
+func (g *Game) drawFactories() {
+	for fIdx := range g.factories {
+		fact := &g.factories[fIdx]
+		if !fact.Active {
+			continue
+		}
+
+		fx := int(math.Round(fact.X))
+		fy := int(math.Round(fact.Y))
+
+		// If the factory is destroying (burning/exploding)
+		isDestroying := fact.SinkingTimer > 0
+
+		// 17x5 factory sprite
+		var factorySprite = [5][17]rune{
+			{' ', '░', '█', '░', ' ', ' ', ' ', ' ', '☼', ' ', ' ', ' ', ' ', '░', '█', '░', ' '},
+			{' ', '║', '█', '║', ' ', ' ', '┌', '─', '┴', '─', '┐', ' ', ' ', '║', '█', '║', ' '},
+			{'╓', '─', '╨', '─', '┴', '─', '┘', ' ', ' ', ' ', '└', '─', '┴', '─', '╨', '─', '╖'},
+			{'║', ' ', '█', ' ', ' ', '█', ' ', ' ', '█', ' ', ' ', '█', ' ', ' ', '█', ' ', '║'},
+			{'╙', '─', '─', '─', '─', '─', '[', '▓', '▓', '▓', ']', '─', '─', '─', '─', '─', '╜'},
+		}
+
+		for r := 0; r < 5; r++ {
+			for c := 0; c < 17; c++ {
+				mx := fx + c - 8
+				my := fy + r - 2
+
+				char := factorySprite[r][c]
+				if char == ' ' {
+					continue
+				}
+
+				var fg tcell.Color
+				if isDestroying {
+					// Flickering fire base for dying factory
+					flicker := (g.Ticks + r + c) % 3
+					if flicker == 0 {
+						char = '▲'
+						fg = tcell.ColorRed
+					} else if flicker == 1 {
+						char = '☼'
+						fg = tcell.ColorOrange
+					} else {
+						char = '█'
+						fg = tcell.ColorDarkGray
+					}
+				} else {
+					// Standard factory coloring
+					switch char {
+					case '║', '┌', '─', '┐', '└', '┘', '┴':
+						fg = tcell.ColorSilver
+					case '☼':
+						// Flashing beacon (out-of-phase warning system based on factory index)
+						phaseOffset := fIdx * 4
+						if ((g.Ticks + phaseOffset) / 8)%2 == 0 {
+							fg = tcell.ColorRed
+						} else {
+							fg = tcell.ColorYellow
+						}
+					case '▓':
+						fg = tcell.ColorDarkCyan // Shutter door / load gates
+					case '╓', '╖', '╙', '╜':
+						fg = tcell.ColorSteelBlue
+					case '░':
+						fg = tcell.ColorDarkGray // Smokestack exhaust collars
+					default:
+						fg = tcell.ColorGray // Factory concrete structure
+					}
+				}
+
+				g.drawCell(mx, my, char, fg)
+			}
+		}
+
+		// Draw active smoke stack emissions if not destroyed/sinking
+		if !isDestroying {
+			g.drawFactorySmoke(fx-6, fy-2)
+			g.drawFactorySmoke(fx+6, fy-2)
+		}
+	}
+}
+
+// drawFactorySmoke renders procedurally billowing, rising grey smoke columns
+func (g *Game) drawFactorySmoke(sx, sy int) {
+	colHeight := 5
+	for h := 1; h <= colHeight; h++ {
+		// drift to the right + wiggle
+		wiggle := int(math.Sin(float64(g.Ticks)/5.0+float64(h)) * 0.8)
+		smX := sx + h/2 + wiggle
+		smY := sy - h
+
+		if smX < 0 || smX >= g.width || smY < 0 || smY >= g.height-4 {
+			continue
+		}
+
+		// phase-based density
+		phase := (g.Ticks/3 - h) % 3
+		if phase < 0 {
+			phase += 3
+		}
+
+		if phase == 0 || phase == 1 {
+			var r rune
+			var fg tcell.Color
+			if h < 3 {
+				r = '█'
+				fg = tcell.ColorDarkGray
+			} else if h < 5 {
+				r = '▒'
+				fg = tcell.ColorDarkGray
+			} else {
+				r = '░'
+				fg = tcell.ColorGray
+			}
+
+			g.drawCell(smX, smY, r, fg)
+		}
+	}
+}
+
+// drawDrones renders the orbiting air-defense drone icons in highly visible LightCyan
+func (g *Game) drawDrones() {
+	for i := 0; i < len(g.drones); i++ {
+		drone := &g.drones[i]
+		if !drone.Active {
+			continue
+		}
+
+		dx := int(math.Round(drone.X))
+		dy := int(math.Round(drone.Y))
+
+		// Draw drone symbol
+		g.drawCell(dx, dy, '⌖', tcell.ColorLightCyan)
+	}
+}
+
+// drawTanks renders beautiful, premium retro tank sprites pointing in patrol direction
+func (g *Game) drawTanks() {
+	for i := 0; i < len(g.tanks); i++ {
+		tank := &g.tanks[i]
+		if !tank.Active {
+			continue
+		}
+
+		tx := int(math.Round(tank.X))
+		ty := int(math.Round(tank.Y))
+
+		isBurning := tank.SinkingTimer > 0
+
+		color := tcell.ColorBlack // Sleek tactical black tank armor
+		treadColor := tcell.ColorDarkGray // Dark gray heavy treads
+		gunColor := tcell.ColorSilver // Sleek silver dual gun barrels
+		fireColor := tcell.ColorOrange
+
+		if isBurning {
+			color = tcell.ColorDarkRed
+			treadColor = tcell.ColorDarkGray
+			gunColor = tcell.ColorDarkGray
+		}
+
+		if tank.PatrolDir == 0 {
+			// Vertical Tank (5x3 sprite)
+			if tank.VY < 0 {
+				// Moving North: Dual high-velocity AA guns pointing North
+				g.drawCell(tx-1, ty-1, '║', gunColor)
+				g.drawCell(tx+1, ty-1, '║', gunColor)
+
+				// Side treads + central rounded turret
+				g.drawCell(tx-2, ty, '▒', treadColor)
+				g.drawCell(tx-1, ty, '(', color)
+				g.drawCell(tx, ty, '▓', color)
+				g.drawCell(tx+1, ty, ')', color)
+				g.drawCell(tx+2, ty, '▒', treadColor)
+
+				// Rear treads + sloped armor housing
+				g.drawCell(tx-2, ty+1, '▒', treadColor)
+				g.drawCell(tx-1, ty+1, ' ', treadColor)
+				g.drawCell(tx, ty+1, '▄', color)
+				g.drawCell(tx+1, ty+1, ' ', treadColor)
+				g.drawCell(tx+2, ty+1, '▒', treadColor)
+			} else {
+				// Moving South: Front sloped armor housing + treads
+				g.drawCell(tx-2, ty-1, '▒', treadColor)
+				g.drawCell(tx-1, ty-1, ' ', treadColor)
+				g.drawCell(tx, ty-1, '▀', color)
+				g.drawCell(tx+1, ty-1, ' ', treadColor)
+				g.drawCell(tx+2, ty-1, '▒', treadColor)
+
+				// Side treads + central rounded turret
+				g.drawCell(tx-2, ty, '▒', treadColor)
+				g.drawCell(tx-1, ty, '(', color)
+				g.drawCell(tx, ty, '▓', color)
+				g.drawCell(tx+1, ty, ')', color)
+				g.drawCell(tx+2, ty, '▒', treadColor)
+
+				// Dual AA guns pointing South
+				g.drawCell(tx-1, ty+1, '║', gunColor)
+				g.drawCell(tx+1, ty+1, '║', gunColor)
+			}
+			
+			if isBurning {
+				flicker := (g.Ticks / 3) % 2
+				if flicker == 0 {
+					g.drawCell(tx, ty, '▲', tcell.ColorRed)
+				} else {
+					g.drawCell(tx, ty, '☼', fireColor)
+				}
+			}
+		} else {
+			// Horizontal Tank (5x3 sprite)
+			if tank.VX < 0 {
+				// Moving West (Pointing Left)
+				// Upper tracks
+				g.drawCell(tx-2, ty-1, '▄', treadColor)
+				g.drawCell(tx-1, ty-1, '▒', treadColor)
+				g.drawCell(tx, ty-1, '▒', treadColor)
+				g.drawCell(tx+1, ty-1, '▒', treadColor)
+				g.drawCell(tx+2, ty-1, '▄', treadColor)
+
+				// Dual AA gun barrels pointing West, chassis, rounded turret
+				g.drawCell(tx-2, ty, '═', gunColor)
+				g.drawCell(tx-1, ty, '═', gunColor)
+				g.drawCell(tx, ty, '▓', color)
+				g.drawCell(tx+1, ty, '▒', color)
+				g.drawCell(tx+2, ty, ']', color)
+
+				// Lower tracks
+				g.drawCell(tx-2, ty+1, '▀', treadColor)
+				g.drawCell(tx-1, ty+1, '▒', treadColor)
+				g.drawCell(tx, ty+1, '▒', treadColor)
+				g.drawCell(tx+1, ty+1, '▒', treadColor)
+				g.drawCell(tx+2, ty+1, '▀', treadColor)
+			} else {
+				// Moving East (Pointing Right)
+				// Upper tracks
+				g.drawCell(tx-2, ty-1, '▄', treadColor)
+				g.drawCell(tx-1, ty-1, '▒', treadColor)
+				g.drawCell(tx, ty-1, '▒', treadColor)
+				g.drawCell(tx+1, ty-1, '▒', treadColor)
+				g.drawCell(tx+2, ty-1, '▄', treadColor)
+
+				// Chassis, rounded turret, dual barrels pointing East
+				g.drawCell(tx-2, ty, '[', color)
+				g.drawCell(tx-1, ty, '▒', color)
+				g.drawCell(tx, ty, '▓', color)
+				g.drawCell(tx+1, ty, '═', gunColor)
+				g.drawCell(tx+2, ty, '═', gunColor)
+
+				// Lower tracks
+				g.drawCell(tx-2, ty+1, '▀', treadColor)
+				g.drawCell(tx-1, ty+1, '▒', treadColor)
+				g.drawCell(tx, ty+1, '▒', treadColor)
+				g.drawCell(tx+1, ty+1, '▒', treadColor)
+				g.drawCell(tx+2, ty+1, '▀', treadColor)
+			}
+			
+			if isBurning {
+				flicker := (g.Ticks / 3) % 2
+				if flicker == 0 {
+					g.drawCell(tx, ty, '▲', tcell.ColorRed)
+				} else {
+					g.drawCell(tx, ty, '☼', fireColor)
+				}
+			}
+		}
+	}
+}
+
+// drawStaticAA renders static AA gun emplacements along the coast
+func (g *Game) drawStaticAA() {
+	for i := 0; i < len(g.staticAAs); i++ {
+		aa := &g.staticAAs[i]
+		if !aa.Active {
+			continue
+		}
+		ax := int(math.Round(aa.X))
+		ay := int(math.Round(aa.Y))
+		isBurning := aa.SinkingTimer > 0
+
+		gunColor := tcell.ColorSilver
+		baseColor := tcell.ColorDarkCyan
+		shieldColor := tcell.ColorDarkGray
+		centerColor := tcell.ColorRed
+		fireColor := tcell.ColorOrange
+
+		if isBurning {
+			gunColor = tcell.ColorDarkGray
+			baseColor = tcell.ColorDarkRed
+			shieldColor = tcell.ColorDarkGray
+			centerColor = tcell.ColorOrange
+		}
+
+		// Draw dual barrels pointing North-ish
+		g.drawCell(ax-1, ay-1, '║', gunColor)
+		g.drawCell(ax+1, ay-1, '║', gunColor)
+
+		// Draw base
+		g.drawCell(ax-1, ay, '▕', shieldColor)
+		g.drawCell(ax, ay, '╬', baseColor)
+		g.drawCell(ax+1, ay, '▏', shieldColor)
+
+		// Draw glowing radar/light on top of base
+		if !isBurning && (g.Ticks/10)%2 == 0 {
+			g.drawCell(ax, ay, '☼', centerColor)
+		}
+
+		// Draw foundation support
+		g.drawCell(ax-1, ay+1, '▀', shieldColor)
+		g.drawCell(ax, ay+1, '█', shieldColor)
+		g.drawCell(ax+1, ay+1, '▀', shieldColor)
+
+		// Draw fire effect if burning
+		if isBurning {
+			flicker := (g.Ticks / 3) % 2
+			if flicker == 0 {
+				g.drawCell(ax, ay, '▲', tcell.ColorRed)
+			} else {
+				g.drawCell(ax, ay, '☼', fireColor)
+			}
+		}
 	}
 }

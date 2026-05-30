@@ -8,7 +8,7 @@ LOGFILE = gobungle.log
 all: build
 
 build:
-	$(GO) build -o $(BINARY) .
+	$(GO) build -o $(BINARY) ./cmd/gobungle
 
 run: build
 	./$(BINARY)
