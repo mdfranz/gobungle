@@ -128,6 +128,7 @@ func (g *Game) updateBoats() {
 				}
 				slog.Info("Boat launched guided missile at Carrier!", "boat_idx", i, "boat_x", boat.X, "boat_y", boat.Y)
 				_ = g.screen.Beep() // Audible ding immediately on missile launch
+				PlaySound("missile")
 			}
 
 			boat.MissileCooldown = 600 + rand.Intn(400)
@@ -224,7 +225,7 @@ func (g *Game) updateFactories() {
 
 		// Factory ground-launched missile at Carrier (Wave 4+)
 		if g.Wave >= 4 && fact.Active && fact.SinkingTimer == 0 {
-			if (g.Ticks + fIdx*200)%800 == 0 {
+			if (g.Ticks+fIdx*200)%800 == 0 {
 				targetX := float64(g.carrier.X + g.carrier.Width/2)
 				targetY := float64(g.carrier.Y + g.carrier.Height/2)
 				dxVec := targetX - fact.X
@@ -249,6 +250,7 @@ func (g *Game) updateFactories() {
 					}
 					slog.Info("Factory launched fortress ground missile at Carrier!", "factory_idx", fIdx, "fact_x", fact.X, "fact_y", fact.Y)
 					_ = g.screen.Beep() // Audible ding immediately on missile launch
+					PlaySound("missile")
 				}
 			}
 		}

@@ -14,7 +14,7 @@ func (g *Game) getCoastlineThreshold(y int) float64 {
 	}
 	// Organic wiggle using combined trigonometric waves
 	wiggle := math.Sin(float64(y)*0.7)*2.0 + math.Cos(float64(y)*0.3)*1.0
-	
+
 	// Sine-curve bay coast: wide water bay in the center (y ≈ h/2), wrapping around north and south
 	return float64(g.worldWidth)/3.0 + math.Sin(float64(y)/h*math.Pi)*(float64(g.worldWidth)/2.2) + wiggle
 }
@@ -147,11 +147,11 @@ func (g *Game) draw() {
 					// Asphalt/Road styling
 					hVal := g.worldHeight
 					wVal := g.worldWidth
-					isVerticalCenter := (vx == wVal - 15)
-					isHorizontalCenter := (vy == hVal / 2)
-					
+					isVerticalCenter := (vx == wVal-15)
+					isHorizontalCenter := (vy == hVal/2)
+
 					if (isVerticalCenter && vy >= hVal/6 && vy <= hVal*5/6 && vy%2 == 0) ||
-					   (isHorizontalCenter && vx >= wVal-15 && vx <= wVal-8 && vx%2 == 0) {
+						(isHorizontalCenter && vx >= wVal-15 && vx <= wVal-8 && vx%2 == 0) {
 						if isVerticalCenter {
 							r = '|'
 						} else {
@@ -190,7 +190,7 @@ func (g *Game) draw() {
 				}
 			} else {
 				// Sea waves
-				isWave := (vx*9 + vy*13) % 23 == 0
+				isWave := (vx*9+vy*13)%23 == 0
 				if isWave {
 					r = '~'
 				}
@@ -206,18 +206,18 @@ func (g *Game) draw() {
 
 		// Define up to 12 smoke sources distributed across the carrier deck
 		sources := []struct{ dx, dy int }{
-			{4, 2},   // Left side
-			{18, 1},  // Right deck
-			{10, 3},  // Mid deck
-			{22, 4},  // Far right deck
-			{7, 1},   // Near landing pad
-			{14, 4},  // Mid-low deck
-			{2, 3},   // Far left deck bottom
-			{20, 3},  // Right mid-lower deck
-			{12, 1},  // Mid top deck
-			{16, 2},  // Mid-right deck
-			{5, 4},   // Left lower deck
-			{24, 2},  // Far right mid deck
+			{4, 2},  // Left side
+			{18, 1}, // Right deck
+			{10, 3}, // Mid deck
+			{22, 4}, // Far right deck
+			{7, 1},  // Near landing pad
+			{14, 4}, // Mid-low deck
+			{2, 3},  // Far left deck bottom
+			{20, 3}, // Right mid-lower deck
+			{12, 1}, // Mid top deck
+			{16, 2}, // Mid-right deck
+			{5, 4},  // Left lower deck
+			{24, 2}, // Far right mid deck
 		}
 
 		// Determine active smoke columns based on damage level (more granular)
@@ -446,7 +446,7 @@ func (g *Game) draw() {
 
 		if smx >= 0 && smx < g.width && smy >= 0 && smy < g.height-4 {
 			bgStyle := g.getMapStyle(mx, my)
-			
+
 			// Select caret/missile arrow based on the dominant direction of its velocity
 			char := '¤' // Default general symbol
 			if math.Abs(m.VX) > math.Abs(m.VY) {
@@ -697,6 +697,7 @@ func (g *Game) drawHUD() {
 		// Tactical audio warning bell: beep every 20 frames (800ms) to avoid audio clutter
 		if g.Ticks%20 == 0 {
 			_ = g.screen.Beep()
+			PlaySound("warning")
 		}
 	}
 
@@ -763,7 +764,7 @@ func (g *Game) drawHUD() {
 		speedKnots, dirDegrees[g.heli.Dir], dirNames[g.heli.Dir], altitudeFeet,
 	)
 	g.drawString(2, hudY+1, instrumentText, hudStyle)
-	
+
 	fuelText := fmt.Sprintf("%3.1f%%", g.heli.Fuel)
 	g.drawString(2+len(instrumentText), hudY+1, fuelText, fuelStyle)
 
@@ -879,7 +880,7 @@ func (g *Game) drawHUD() {
 
 	carrierLabel := "   |   CARRIER: "
 	g.drawString(offset, hudY+2, carrierLabel, hudStyle)
-	
+
 	barStr := "["
 	pct := int(math.Round(g.carrier.Health))
 	filled := pct / 10
@@ -894,7 +895,6 @@ func (g *Game) drawHUD() {
 	g.drawString(offset+len(carrierLabel), hudY+2, barStr, carrierStyle.Bold(true))
 	carrierText := fmt.Sprintf(" %3d%%", pct)
 	g.drawString(offset+len(carrierLabel)+len(barStr), hudY+2, carrierText, carrierStyle)
-
 
 	// Display row H-1: Control Instructions
 	controlStyle := hudStyle.Foreground(tcell.ColorSilver)
@@ -976,7 +976,7 @@ func (g *Game) drawFactories() {
 					case '☼':
 						// Flashing beacon (out-of-phase warning system based on factory index)
 						phaseOffset := fIdx * 4
-						if ((g.Ticks + phaseOffset) / 8)%2 == 0 {
+						if ((g.Ticks+phaseOffset)/8)%2 == 0 {
 							fg = tcell.ColorRed
 						} else {
 							fg = tcell.ColorYellow
@@ -1071,9 +1071,9 @@ func (g *Game) drawTanks() {
 
 		isBurning := tank.SinkingTimer > 0
 
-		color := tcell.ColorBlack // Sleek tactical black tank armor
+		color := tcell.ColorBlack         // Sleek tactical black tank armor
 		treadColor := tcell.ColorDarkGray // Dark gray heavy treads
-		gunColor := tcell.ColorSilver // Sleek silver dual gun barrels
+		gunColor := tcell.ColorSilver     // Sleek silver dual gun barrels
 		fireColor := tcell.ColorOrange
 
 		if isBurning {
@@ -1121,7 +1121,7 @@ func (g *Game) drawTanks() {
 				g.drawCell(tx-1, ty+1, '║', gunColor)
 				g.drawCell(tx+1, ty+1, '║', gunColor)
 			}
-			
+
 			if isBurning {
 				flicker := (g.Ticks / 3) % 2
 				if flicker == 0 {
@@ -1177,7 +1177,7 @@ func (g *Game) drawTanks() {
 				g.drawCell(tx+1, ty+1, '▒', treadColor)
 				g.drawCell(tx+2, ty+1, '▀', treadColor)
 			}
-			
+
 			if isBurning {
 				flicker := (g.Ticks / 3) % 2
 				if flicker == 0 {

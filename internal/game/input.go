@@ -72,6 +72,7 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 		}
 
 		slog.Info("Aerial cannon fired", "dir", g.heli.Dir, "degrees", dirDegrees[g.heli.Dir])
+		PlaySound("laser")
 		g.heli.FireCooldown = 4
 	}
 
@@ -110,6 +111,7 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 
 			g.heli.MissileAmmo--
 			slog.Info("Guided missile fired", "dir", g.heli.Dir, "degrees", dirDegrees[g.heli.Dir], "ammo_remaining", g.heli.MissileAmmo)
+			PlaySound("missile")
 			g.heli.MissileCooldown = 12
 		}
 	}
