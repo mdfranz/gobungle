@@ -1,3 +1,5 @@
+![Gobungle Carrier Damage State](burning.png)
+
 # 🚁 Gobungle: Tactical Helicopter Combat & Carrier Defense
 
 Gobungle is a high-octane, terminal-based tactical combat game written in Go using the `tcell` library. Command a state-of-the-art attack helicopter, defend your mothership aircraft carrier against rogue warships, and execute surgical lock-on guided missile strikes!
@@ -5,9 +7,7 @@ Gobungle is a high-octane, terminal-based tactical combat game written in Go usi
 Inspired by Will Wright's legendary 1984 8-bit classic [Raid on Bungeling Bay](https://en.wikipedia.org/wiki/Raid_on_Bungeling_Bay), Gobungle adapts the iconic helicopter carrier defense formula into a fast-paced command line experience.
 
 [![Raid on Bungeling Bay C64 Gameplay](https://img.youtube.com/vi/teWJkLaut9s/hqdefault.jpg)](https://www.youtube.com/watch?v=teWJkLaut9s)
-*Watch the original [Commodore 64 Raid on Bungeling Bay Gameplay Longplay on YouTube](https://www.youtube.com/watch?v=teWJkLaut9s).*
 
-![Gobungle Carrier Damage State](burning.png)
 
 ---
 
