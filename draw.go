@@ -90,6 +90,132 @@ func (g *Game) draw() {
 		}
 	}
 
+	// 1.2 Draw Billowing Smoke & Flame from Carrier depending on Health (Aesthetics Enhancement)
+	if g.carrier.Health < 100.0 {
+		damagePct := 100.0 - g.carrier.Health
+
+		// Define up to 12 smoke sources distributed across the carrier deck
+		sources := []struct{ dx, dy int }{
+			{4, 2},   // Left side
+			{18, 1},  // Right deck
+			{10, 3},  // Mid deck
+			{22, 4},  // Far right deck
+			{7, 1},   // Near landing pad
+			{14, 4},  // Mid-low deck
+			{2, 3},   // Far left deck bottom
+			{20, 3},  // Right mid-lower deck
+			{12, 1},  // Mid top deck
+			{16, 2},  // Mid-right deck
+			{5, 4},   // Left lower deck
+			{24, 2},  // Far right mid deck
+		}
+
+		// Determine active smoke columns based on damage level (more granular)
+		numColumns := int(damagePct / 8.0)
+		if numColumns < 1 && damagePct > 0 {
+			numColumns = 1
+		}
+		if numColumns > len(sources) {
+			numColumns = len(sources)
+		}
+
+		// Height of columns grows with damage
+		maxHeight := 5 + int(damagePct*0.12)
+
+		// Smoke billowing speed increases as ship is more damaged
+		speedDiv := 3
+		if damagePct >= 40 {
+			speedDiv = 2
+		}
+		if damagePct >= 75 {
+			speedDiv = 1
+		}
+
+		// Calculate fire base height based on damage
+		fireHeight := 0
+		if damagePct >= 20 {
+			fireHeight = int(damagePct / 25.0)
+		}
+
+		for col := 0; col < numColumns; col++ {
+			src := sources[col]
+			sx := g.carrier.X + src.dx
+			sy := g.carrier.Y + src.dy
+
+			// Add a time-based sinusoidal oscillation to each column's height for organic waving
+			colOscillation := int(math.Sin(float64(g.Ticks)/6.0+float64(col)) * 1.5)
+			colHeight := maxHeight + colOscillation
+			if colHeight < 3 {
+				colHeight = 3
+			}
+
+			// Render the vertical column of smoke rising and drifting
+			for h := 0; h < colHeight; h++ {
+				// Organic horizontal curling/wiggle + wind drift to the right (East)
+				wiggle := int(math.Sin(float64(g.Ticks)/5.0+float64(h)) * 0.6)
+				smX := sx + h/2 + wiggle
+				smY := sy - h
+
+				// Ensure within map boundaries and above HUD
+				if smX < 0 || smX >= g.width || smY < 0 || smY >= g.height-4 {
+					continue
+				}
+
+				// Billow phase mapping
+				phase := (g.Ticks/speedDiv - h) % 4
+				if phase < 0 {
+					phase += 4
+				}
+
+				// Density of particles increases with damage (wider phase thresholds)
+				drawParticle := false
+				if damagePct < 30 {
+					drawParticle = (phase == 0)
+				} else if damagePct < 70 {
+					drawParticle = (phase == 0 || phase == 1)
+				} else {
+					drawParticle = (phase == 0 || phase == 1 || phase == 2)
+				}
+
+				if drawParticle {
+					var r rune
+					var fg tcell.Color
+					bgStyle := g.getMapStyle(smX, smY)
+
+					if h < fireHeight {
+						// Flickering fire base: alternate colors/characters
+						flicker := (g.Ticks + h + col) % 3
+						if flicker == 0 {
+							r = '▲'
+							fg = tcell.ColorRed
+						} else if flicker == 1 {
+							r = '☼'
+							fg = tcell.ColorOrange
+						} else {
+							r = '▲'
+							fg = tcell.ColorYellow
+						}
+					} else if h < fireHeight+3 {
+						// Extra thick hot smoke near base
+						r = '█'
+						fg = tcell.ColorDarkGray
+					} else if h < fireHeight+7 {
+						// Billowing medium smoke
+						r = '▒'
+						fg = tcell.ColorDarkGray
+					} else {
+						// Dissipated thin ash smoke
+						r = '░'
+						fg = tcell.ColorGray
+					}
+
+					// Blend smoke particle dynamically onto background style
+					g.screen.SetContent(smX, smY, r, nil, bgStyle.Foreground(fg))
+				}
+			}
+		}
+	}
+
 	// 1.5 Draw World Targets, Projectiles, and Particle Effects
 	// A. Draw Boats (scaled 2-3x larger: 11 cells wide, 3 rows high)
 	for i := 0; i < len(g.boats); i++ {
@@ -179,6 +305,44 @@ func (g *Game) draw() {
 		}
 	}
 
+	// B.5 Draw Guided Missiles
+	for i := 0; i < len(g.missiles); i++ {
+		m := &g.missiles[i]
+		if !m.Active {
+			continue
+		}
+		mx := int(math.Round(m.X))
+		my := int(math.Round(m.Y))
+
+		if mx >= 0 && mx < g.width && my >= 0 && my < g.height-4 {
+			bgStyle := g.getMapStyle(mx, my)
+			
+			// Select caret/missile arrow based on the dominant direction of its velocity
+			char := '¤' // Default general symbol
+			if math.Abs(m.VX) > math.Abs(m.VY) {
+				if m.VX > 0 {
+					char = '►'
+				} else {
+					char = '◄'
+				}
+			} else {
+				if m.VY > 0 {
+					char = '▼'
+				} else {
+					char = '▲'
+				}
+			}
+
+			// Render player missile in Orange and enemy missile in bold Red
+			color := tcell.ColorOrange
+			if m.IsEnemy {
+				color = tcell.ColorRed
+			}
+			style := bgStyle.Foreground(color).Bold(true)
+			g.screen.SetContent(mx, my, char, nil, style)
+		}
+	}
+
 	// C. Draw Explosions
 	for i := 0; i < len(g.explosions); i++ {
 		exp := &g.explosions[i]
@@ -190,10 +354,10 @@ func (g *Game) draw() {
 			var r rune
 			var fg tcell.Color
 
-			if exp.Age < 3 {
+			if exp.Age < 4 {
 				r = '*'
 				fg = tcell.ColorYellow
-			} else if exp.Age < 6 {
+			} else if exp.Age < 9 {
 				r = '¤'
 				fg = tcell.ColorOrange
 			} else {
@@ -276,6 +440,18 @@ func (g *Game) drawHUD() {
 	// Add Title Label onto boundary line
 	g.drawString(2, hudY, " 🚁 COCKPIT HUD PANEL 🚁 ", borderStyle.Foreground(tcell.ColorYellow))
 
+	// Scan for active enemy guided missiles to trigger flashing alert on Cockpit dashboard
+	hasIncoming := false
+	for i := 0; i < len(g.missiles); i++ {
+		if g.missiles[i].Active && g.missiles[i].IsEnemy {
+			hasIncoming = true
+			break
+		}
+	}
+	if hasIncoming && (g.heli.RotorState/2)%2 == 0 {
+		g.drawString(g.width-33, hudY, "⚠️ WARNING: INCOMING MISSILE ⚠️", borderStyle.Foreground(tcell.ColorRed).Bold(true))
+	}
+
 	// Clear background of lines H-3, H-2, H-1
 	for dy := 1; dy <= 3; dy++ {
 		for x := 0; x < g.width; x++ {
@@ -338,7 +514,31 @@ func (g *Game) drawHUD() {
 		speedKnots, dirDegrees[g.heli.Dir], dirNames[g.heli.Dir], altitudeFeet,
 	)
 	g.drawString(2, hudY+1, instrumentText, hudStyle)
-	g.drawString(2+len(instrumentText), hudY+1, fmt.Sprintf("%3.1f%%", g.heli.Fuel), fuelStyle)
+	
+	fuelText := fmt.Sprintf("%3.1f%%", g.heli.Fuel)
+	g.drawString(2+len(instrumentText), hudY+1, fuelText, fuelStyle)
+
+	// Display Guided Missile Ammo count as premium HUD icons
+	ammoLabel := "   |   MISSILES: "
+	g.drawString(2+len(instrumentText)+len(fuelText), hudY+1, ammoLabel, hudStyle)
+
+	ammoColor := tcell.ColorGreen
+	if g.heli.MissileAmmo == 0 {
+		ammoColor = tcell.ColorRed
+	} else if g.heli.MissileAmmo <= 2 {
+		ammoColor = tcell.ColorOrange
+	}
+	ammoStyle := hudStyle.Foreground(ammoColor).Bold(true)
+
+	ammoStr := ""
+	for i := 0; i < 4; i++ {
+		if i < g.heli.MissileAmmo {
+			ammoStr += "▲ "
+		} else {
+			ammoStr += "· "
+		}
+	}
+	g.drawString(2+len(instrumentText)+len(fuelText)+len(ammoLabel), hudY+1, ammoStr, ammoStyle)
 
 	// Display row H-2: Status Metrics
 	statusLabel := "FLIGHT STATUS: "
@@ -370,11 +570,57 @@ func (g *Game) drawHUD() {
 
 	armorLabel := "   |   ARMOR: "
 	g.drawString(offset, hudY+2, armorLabel, hudStyle)
-	g.drawString(offset+len(armorLabel), hudY+2, fmt.Sprintf("%3.0f%%", g.heli.Armor), armorStyle)
+	armorText := fmt.Sprintf("%3.0f%%", g.heli.Armor)
+	g.drawString(offset+len(armorLabel), hudY+2, armorText, armorStyle)
+
+	offset += len(armorLabel) + len(armorText)
+
+	lockLabel := "   |   LOCK: "
+	g.drawString(offset, hudY+2, lockLabel, hudStyle)
+
+	lockedBoat := g.getLockedBoat()
+	lockStr := "NONE"
+	lockColor := tcell.ColorRed
+	if lockedBoat != nil {
+		lockStr = "READY"
+		lockColor = tcell.ColorGreen
+	}
+	lockStyle := hudStyle.Foreground(lockColor).Bold(true)
+	g.drawString(offset+len(lockLabel), hudY+2, lockStr, lockStyle)
+
+	offset += len(lockLabel) + len(lockStr)
+
+	// Display Carrier HP health bar
+	carrierColor := tcell.ColorGreen
+	if g.carrier.Health < 25.0 {
+		carrierColor = tcell.ColorRed
+	} else if g.carrier.Health < 50.0 {
+		carrierColor = tcell.ColorOrange
+	}
+	carrierStyle := hudStyle.Foreground(carrierColor)
+
+	carrierLabel := "   |   CARRIER: "
+	g.drawString(offset, hudY+2, carrierLabel, hudStyle)
+	
+	barStr := "["
+	pct := int(math.Round(g.carrier.Health))
+	filled := pct / 10
+	for b := 0; b < 10; b++ {
+		if b < filled {
+			barStr += "█"
+		} else {
+			barStr += "░"
+		}
+	}
+	barStr += "]"
+	g.drawString(offset+len(carrierLabel), hudY+2, barStr, carrierStyle.Bold(true))
+	carrierText := fmt.Sprintf(" %3d%%", pct)
+	g.drawString(offset+len(carrierLabel)+len(barStr), hudY+2, carrierText, carrierStyle)
+
 
 	// Display row H-1: Control Instructions
 	controlStyle := hudStyle.Foreground(tcell.ColorSilver)
-	g.drawString(2, hudY+3, "CONTROLS: ARROWS/WASD = Fly | DOWN/S = Brakes | SPACE = Fire Cannon | L = Land/Takeoff", controlStyle)
+	g.drawString(2, hudY+3, "CONTROLS: ARROWS/WASD = Fly | DOWN/S = Brakes | SPACE = Cannon | F = Guided Missile | L = Land/Takeoff", controlStyle)
 }
 
 // drawString is a helper to draw string labels cell by cell

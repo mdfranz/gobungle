@@ -52,6 +52,7 @@ func main() {
 		Y:      h / 4,
 		Width:  26,
 		Height: 6,
+		Health: 100.0,
 	}
 
 	// Calculate landing pad center coordinates
@@ -68,13 +69,14 @@ func main() {
 		Landed: true,
 		Fuel:   100.0,
 		Armor:  100.0,
+		MissileAmmo: 4,
 	}
 
 	// Initialize 3 target boats at different water locations (adjusted for larger size and durability)
 	boats := []Boat{
-		{X: 15, Y: float64(h - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true},
-		{X: float64(w - 25), Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true},
-		{X: float64(w / 2), Y: float64(h - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true},
+		{X: 15, Y: float64(h - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 200},
+		{X: float64(w - 25), Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 400},
+		{X: float64(w / 2), Y: float64(h - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 600},
 	}
 
 	game := &Game{
@@ -85,6 +87,7 @@ func main() {
 		heli:       heli,
 		carrier:    carrier,
 		bullets:    make([]Bullet, 0, 16),
+		missiles:   make([]Missile, 0, 2),
 		boats:      boats,
 		explosions: make([]Explosion, 0, 8),
 		boatsSunk:  0,

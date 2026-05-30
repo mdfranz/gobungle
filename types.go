@@ -72,27 +72,46 @@ type Carrier struct {
 	Y      int
 	Width  int
 	Height int
+	Health float64
 }
 
 // Projectile fired by helicopter or enemies
 type Bullet struct {
-	X       float64
-	Y       float64
-	VX      float64
-	VY      float64
-	Active  bool
-	IsEnemy bool // true if fired by enemy boat
+	X                float64
+	Y                float64
+	StartX           float64
+	StartY           float64
+	VX               float64
+	VY               float64
+	Active           bool
+	IsEnemy          bool // true if fired by enemy boat
+	IsCountermeasure bool // true if spawned as defensive anti-missile CIWS
+}
+
+// Guided Missile fired by player helicopter or enemy boats
+type Missile struct {
+	X                  float64
+	Y                  float64
+	StartX             float64
+	StartY             float64
+	VX                 float64
+	VY                 float64
+	Active             bool
+	InterceptionRolled bool
+	IsEnemy            bool // true if fired by enemy boat at the carrier
 }
 
 // Enemy target boat
 type Boat struct {
-	X            float64
-	Y            float64
-	VX           float64
-	Health       int
-	MaxHealth    int
-	Active       bool
-	FireCooldown int // ticks until next shot
+	X               float64
+	Y               float64
+	VX              float64
+	Health          int
+	MaxHealth       int
+	Active          bool
+	FireCooldown    int // ticks until next shot
+	MissileCooldown int // ticks until next guided missile launch
+	SinkingTimer    int // ticks until boat completely sinks, 0 if not sinking
 }
 
 // Visual explosion particle effect
@@ -115,6 +134,8 @@ type Helicopter struct {
 	Armor           float64 // 0 to 100
 	FireCooldown    int
 	TakeoffCooldown int
+	MissileCooldown int
+	MissileAmmo     int
 }
 
 type Game struct {
@@ -125,7 +146,9 @@ type Game struct {
 	heli       Helicopter
 	carrier    Carrier
 	bullets    []Bullet
+	missiles   []Missile
 	boats      []Boat
 	explosions []Explosion
 	boatsSunk  int
+	Ticks      int
 }
