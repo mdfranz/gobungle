@@ -1,0 +1,14 @@
+# Compiled binary
+gobungle
+
+# Game logs
+gobungle.log
+
+# Go workspace / temp files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
