@@ -263,7 +263,7 @@ func (g *Game) checkEnemyMissileVsCarrier(m *Missile) {
 			}
 		}
 
-		g.resetRound()
+		g.gameOver = true
 	}
 }
 

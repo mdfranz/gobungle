@@ -313,12 +313,15 @@ func (g *Game) checkWaveCompletion() {
 		return
 	}
 
-	slog.Info("All enemy assets destroyed! Resetting with progressive difficulty increase", "speed_multiplier", 1.25)
+	g.Wave++
+	slog.Info("All enemy assets destroyed! Advancing to next wave", "wave", g.Wave, "speed_multiplier", 1.25)
 
 	for i := range g.boats {
 		g.boats[i].Active = true
 		g.boats[i].Health = g.boats[i].MaxHealth
 		g.boats[i].SinkingTimer = 0
+		g.boats[i].X = g.initialBoats[i].X
+		g.boats[i].Y = g.initialBoats[i].Y
 		newSpeed := g.boats[i].VX * 1.25
 		if math.Abs(newSpeed) > 2.0 {
 			if newSpeed < 0 {
@@ -360,7 +363,7 @@ func (g *Game) checkWaveCompletion() {
 
 	for tIdx := range g.tanks {
 		tank := &g.tanks[tIdx]
-		tank.Active = true
+		tank.Active = g.Wave >= 2
 		tank.Health = tank.MaxHealth
 		tank.SinkingTimer = 0
 		tank.FireCooldown = 60 + rand.Intn(100)
@@ -391,7 +394,7 @@ func (g *Game) checkWaveCompletion() {
 
 	for saIdx := range g.staticAAs {
 		sa := &g.staticAAs[saIdx]
-		sa.Active = true
+		sa.Active = g.Wave >= 3
 		sa.Health = sa.MaxHealth
 		sa.SinkingTimer = 0
 		sa.FireCooldown = 45 + rand.Intn(100)
@@ -530,7 +533,7 @@ func (g *Game) initStaticAAs() {
 			Y:            float64(y),
 			Health:       5,
 			MaxHealth:    5,
-			Active:       true,
+			Active:       g.Wave >= 3,
 			FireCooldown: 30 + rand.Intn(100),
 		}
 		slog.Info("Initialized static AA gun", "idx", i, "x", x, "y", y)

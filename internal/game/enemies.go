@@ -221,6 +221,36 @@ func (g *Game) updateFactories() {
 			}
 		}
 
+		// Factory ground-launched missile at Carrier (Wave 4+)
+		if g.Wave >= 4 && fact.Active && fact.SinkingTimer == 0 {
+			if (g.Ticks + fIdx*200)%800 == 0 {
+				targetX := float64(g.carrier.X + g.carrier.Width/2)
+				targetY := float64(g.carrier.Y + g.carrier.Height/2)
+				dxVec := targetX - fact.X
+				dyVec := targetY - fact.Y
+				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
+
+				if dist > 0 {
+					initialSpeed := 0.25
+					mvx := (dxVec / dist) * initialSpeed
+					mvy := (dyVec / dist) * initialSpeed
+
+					spawned := false
+					for k := 0; k < len(g.missiles); k++ {
+						if !g.missiles[k].Active {
+							g.missiles[k] = Missile{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true}
+							spawned = true
+							break
+						}
+					}
+					if !spawned && len(g.missiles) < 16 {
+						g.missiles = append(g.missiles, Missile{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
+					}
+					slog.Info("Factory launched fortress ground missile at Carrier!", "factory_idx", fIdx, "fact_x", fact.X, "fact_y", fact.Y)
+				}
+			}
+		}
+
 		// Factory drone replenishment
 		if fact.Active && fact.SinkingTimer == 0 && g.Ticks%100 == 0 {
 			activeCount := 0

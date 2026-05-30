@@ -14,6 +14,9 @@ type Game struct {
 	width          int
 	height         int
 	quit           chan struct{}
+	quitConfirming bool
+	gameOver       bool
+	Wave           int
 	heli           Helicopter
 	carrier        Carrier
 	bullets        []Bullet
@@ -83,9 +86,9 @@ func New(screen tcell.Screen) *Game {
 	drones = append(drones, Drone{X: cx - 12.0, Y: cy, Active: true, Angle: 3.14159, FactoryIdx: -1})
 
 	tanks := []Tank{
-		{X: float64(w - 15), Y: float64(h * 5 / 16), VY: 0.04, Health: 4, MaxHealth: 4, Active: true, PatrolDir: 0, MinCoord: float64(h / 8), MaxCoord: float64(h / 2)},
-		{X: float64(w - 15), Y: float64(h * 11 / 16), VY: -0.04, Health: 4, MaxHealth: 4, Active: true, PatrolDir: 0, MinCoord: float64(h / 2), MaxCoord: float64(h * 7 / 8)},
-		{X: float64(w - 11), Y: float64(h / 2), VX: 0.06, Health: 4, MaxHealth: 4, Active: true, PatrolDir: 1, MinCoord: float64(w - 15), MaxCoord: float64(w - 7)},
+		{X: float64(w - 15), Y: float64(h * 5 / 16), VY: 0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(h / 8), MaxCoord: float64(h / 2)},
+		{X: float64(w - 15), Y: float64(h * 11 / 16), VY: -0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(h / 2), MaxCoord: float64(h * 7 / 8)},
+		{X: float64(w - 11), Y: float64(h / 2), VX: 0.06, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 1, MinCoord: float64(w - 15), MaxCoord: float64(w - 7)},
 	}
 
 	g := &Game{
@@ -93,6 +96,7 @@ func New(screen tcell.Screen) *Game {
 		width:        w,
 		height:       h,
 		quit:         make(chan struct{}),
+		Wave:         1,
 		heli:         heli,
 		carrier:      carrier,
 		bullets:      make([]Bullet, 0, 16),
@@ -105,7 +109,14 @@ func New(screen tcell.Screen) *Game {
 		tanks:        tanks,
 		explosions:   make([]Explosion, 0, 8),
 	}
-	copy(g.initialBoats, boats)
+	// Always start gunboats close to the shore (water side of coastline threshold)
+	for i := range g.boats {
+		by := int(math.Round(g.boats[i].Y))
+		thresh := g.getCoastlineThreshold(by)
+		g.boats[i].X = thresh - 8.0
+	}
+
+	copy(g.initialBoats, g.boats)
 	g.initStaticAAs()
 	return g
 }
@@ -128,7 +139,9 @@ func (g *Game) gameLoop() {
 		case <-ticker.C:
 			g.mu.Lock()
 			g.width, g.height = g.screen.Size()
-			g.updatePhysics()
+			if !g.quitConfirming && !g.gameOver {
+				g.updatePhysics()
+			}
 			g.draw()
 			g.mu.Unlock()
 		}
@@ -149,12 +162,34 @@ func (g *Game) inputLoop() {
 			g.mu.Unlock()
 
 		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				slog.Info("Gobungle Game Shutting Down Gracefully")
+			g.mu.Lock()
+			if g.gameOver {
+				slog.Info("Gobungle Game Over. Shutting Down Gracefully.")
+				g.mu.Unlock()
 				close(g.quit)
 				return
 			}
-			g.mu.Lock()
+
+			if g.quitConfirming {
+				key := ev.Key()
+				ch := ev.Rune()
+				if ch == 'y' || ch == 'Y' || key == tcell.KeyCtrlC {
+					slog.Info("Gobungle Game Shutting Down Gracefully")
+					g.mu.Unlock()
+					close(g.quit)
+					return
+				} else if ch == 'n' || ch == 'N' || key == tcell.KeyEscape {
+					g.quitConfirming = false
+				}
+				g.mu.Unlock()
+				continue
+			}
+
+			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				g.quitConfirming = true
+				g.mu.Unlock()
+				continue
+			}
 			g.handleKeyPress(ev)
 			g.mu.Unlock()
 		}

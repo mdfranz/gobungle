@@ -540,8 +540,111 @@ func (g *Game) draw() {
 	// 3. Draw Bottom UI / HUD Dashboard
 	g.drawHUD()
 
+	if g.quitConfirming {
+		g.drawQuitConfirmation()
+	}
+
+	if g.gameOver {
+		g.drawGameOver()
+	}
+
 	// Double buffering display flush
 	g.screen.Show()
+}
+
+// drawGameOver renders a high-impact centered game-over modal screen.
+func (g *Game) drawGameOver() {
+	boxW := 46
+	boxH := 9
+	startX := (g.width - boxW) / 2
+	startY := (g.height - 4 - boxH) / 2
+	if startY < 0 {
+		startY = 0
+	}
+
+	borderStyle := tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorWhite)
+	titleStyle := tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorYellow).Bold(true)
+	textStyle := tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorWhite)
+
+	// Fill background
+	for r := 0; r < boxH; r++ {
+		for c := 0; c < boxW; c++ {
+			g.screen.SetContent(startX+c, startY+r, ' ', nil, borderStyle)
+		}
+	}
+
+	// Draw borders
+	for c := 0; c < boxW; c++ {
+		g.screen.SetContent(startX+c, startY, '═', nil, borderStyle)
+		g.screen.SetContent(startX+c, startY+boxH-1, '═', nil, borderStyle)
+	}
+	for r := 0; r < boxH; r++ {
+		g.screen.SetContent(startX, startY+r, '║', nil, borderStyle)
+		g.screen.SetContent(startX+boxW-1, startY+r, '║', nil, borderStyle)
+	}
+	g.screen.SetContent(startX, startY, '╔', nil, borderStyle)
+	g.screen.SetContent(startX+boxW-1, startY, '╗', nil, borderStyle)
+	g.screen.SetContent(startX, startY+boxH-1, '╚', nil, borderStyle)
+	g.screen.SetContent(startX+boxW-1, startY+boxH-1, '╝', nil, borderStyle)
+
+	// Draw content
+	title := " ☠️  MISSION FAILURE  ☠️ "
+	g.drawString(startX+(boxW-len(title))/2, startY+1, title, titleStyle)
+
+	msg1 := "THE AIRCRAFT CARRIER HAS BEEN DESTROYED!"
+	g.drawString(startX+(boxW-len(msg1))/2, startY+3, msg1, textStyle)
+
+	stats := fmt.Sprintf("You survived until Wave %d", g.Wave)
+	g.drawString(startX+(boxW-len(stats))/2, startY+5, stats, titleStyle)
+
+	exitPrompt := "Press ANY KEY to exit the game"
+	g.drawString(startX+(boxW-len(exitPrompt))/2, startY+7, exitPrompt, textStyle)
+}
+
+// drawQuitConfirmation renders a styled modal warning box centered on the screen.
+func (g *Game) drawQuitConfirmation() {
+	boxW := 42
+	boxH := 7
+	startX := (g.width - boxW) / 2
+	startY := (g.height - 4 - boxH) / 2
+	if startY < 0 {
+		startY = 0
+	}
+
+	borderStyle := tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorWhite)
+	titleStyle := tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorYellow).Bold(true)
+	textStyle := tcell.StyleDefault.Background(tcell.ColorDarkRed).Foreground(tcell.ColorWhite)
+
+	// Fill background
+	for r := 0; r < boxH; r++ {
+		for c := 0; c < boxW; c++ {
+			g.screen.SetContent(startX+c, startY+r, ' ', nil, borderStyle)
+		}
+	}
+
+	// Draw borders
+	for c := 0; c < boxW; c++ {
+		g.screen.SetContent(startX+c, startY, '═', nil, borderStyle)
+		g.screen.SetContent(startX+c, startY+boxH-1, '═', nil, borderStyle)
+	}
+	for r := 0; r < boxH; r++ {
+		g.screen.SetContent(startX, startY+r, '║', nil, borderStyle)
+		g.screen.SetContent(startX+boxW-1, startY+r, '║', nil, borderStyle)
+	}
+	g.screen.SetContent(startX, startY, '╔', nil, borderStyle)
+	g.screen.SetContent(startX+boxW-1, startY, '╗', nil, borderStyle)
+	g.screen.SetContent(startX, startY+boxH-1, '╚', nil, borderStyle)
+	g.screen.SetContent(startX+boxW-1, startY+boxH-1, '╝', nil, borderStyle)
+
+	// Draw content
+	title := "  CONFIRM QUIT  "
+	g.drawString(startX+(boxW-len(title))/2, startY+1, title, titleStyle)
+
+	msg := "Are you sure you want to exit?"
+	g.drawString(startX+(boxW-len(msg))/2, startY+3, msg, textStyle)
+
+	opts := "[Y]es, Quit  |  [N]o, Resume"
+	g.drawString(startX+(boxW-len(opts))/2, startY+5, opts, titleStyle)
 }
 
 // drawHUD prints diagnostic status metrics and cockpit gauges
@@ -555,7 +658,8 @@ func (g *Game) drawHUD() {
 		g.screen.SetContent(x, hudY, '═', nil, borderStyle)
 	}
 	// Add Title Label onto boundary line
-	g.drawString(2, hudY, " 🚁 COCKPIT HUD PANEL 🚁 ", borderStyle.Foreground(tcell.ColorYellow))
+	hudTitle := fmt.Sprintf(" 🚁 COCKPIT HUD PANEL (WAVE %d) 🚁 ", g.Wave)
+	g.drawString(2, hudY, hudTitle, borderStyle.Foreground(tcell.ColorYellow))
 
 	// Scan for active enemy guided missiles to trigger flashing alert on Cockpit dashboard
 	hasIncoming := false
