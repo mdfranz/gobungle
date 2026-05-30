@@ -1,5 +1,5 @@
 # Go toolchain path on this system
-GO ?= /home/mdfranz/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.2.linux-amd64/bin/go
+GO ?= go
 BINARY = gobungle
 LOGFILE = gobungle.log
 
