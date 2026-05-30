@@ -2,6 +2,7 @@ package game
 
 import (
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 
