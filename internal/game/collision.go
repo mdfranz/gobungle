@@ -97,16 +97,19 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 				}
 			}
 
-			padX := g.carrier.X + g.carrier.Width/3
-			padY := g.carrier.Y + g.carrier.Height/2
-			g.heli.X = float64(padX)
-			g.heli.Y = float64(padY)
-			g.heli.VX = 0
-			g.heli.VY = 0
-			g.heli.Fuel = 100.0
-			g.heli.Armor = 100.0
-			g.heli.MissileAmmo = 4
-			g.heli.Landed = true
+			// If there are active enemy missiles in flight (on launch), add a slight additional delay after getting killed
+			hasIncoming := false
+			for j := 0; j < len(g.missiles); j++ {
+				if g.missiles[j].Active && g.missiles[j].IsEnemy {
+					hasIncoming = true
+					break
+				}
+			}
+			if hasIncoming {
+				g.heli.RespawnTimer = 65 // Set 2.6 seconds delay (65 ticks @ 25 FPS)
+			} else {
+				g.heli.RespawnTimer = 40 // Set 1.6 seconds delay (40 ticks @ 25 FPS)
+			}
 		}
 	}
 }

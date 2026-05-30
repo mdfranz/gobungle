@@ -53,8 +53,8 @@ func (g *Game) updateBoats() {
 
 		threshold := g.getCoastlineThreshold(int(math.Round(boat.Y)))
 		maxWaterX := threshold - 7.0
-		if maxWaterX > float64(g.width-7) {
-			maxWaterX = float64(g.width - 7)
+		if maxWaterX > float64(g.worldWidth-7) {
+			maxWaterX = float64(g.worldWidth - 7)
 		}
 		if boat.X < 6 || boat.X > maxWaterX {
 			boat.VX = -boat.VX
@@ -127,6 +127,7 @@ func (g *Game) updateBoats() {
 					g.missiles = append(g.missiles, Missile{X: boat.X, Y: boat.Y, StartX: boat.X, StartY: boat.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
 				}
 				slog.Info("Boat launched guided missile at Carrier!", "boat_idx", i, "boat_x", boat.X, "boat_y", boat.Y)
+				_ = g.screen.Beep() // Audible ding immediately on missile launch
 			}
 
 			boat.MissileCooldown = 600 + rand.Intn(400)
@@ -247,6 +248,7 @@ func (g *Game) updateFactories() {
 						g.missiles = append(g.missiles, Missile{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
 					}
 					slog.Info("Factory launched fortress ground missile at Carrier!", "factory_idx", fIdx, "fact_x", fact.X, "fact_y", fact.Y)
+					_ = g.screen.Beep() // Audible ding immediately on missile launch
 				}
 			}
 		}

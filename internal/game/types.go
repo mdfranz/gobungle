@@ -136,6 +136,7 @@ type Helicopter struct {
 	TakeoffCooldown int
 	MissileCooldown int
 	MissileAmmo     int
+	RespawnTimer    int
 }
 
 // Central island housing the enemy factory

@@ -12,6 +12,10 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 	key := ev.Key()
 	ch := ev.Rune()
 
+	if g.heli.Armor <= 0 || g.heli.RespawnTimer > 0 {
+		return
+	}
+
 	padX := g.carrier.X + g.carrier.Width/3
 	padY := g.carrier.Y + g.carrier.Height/2
 	aligned := int(math.Round(g.heli.X)) >= padX-1 && int(math.Round(g.heli.X)) <= padX+1 &&

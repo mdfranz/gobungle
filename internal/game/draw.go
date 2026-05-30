@@ -8,7 +8,7 @@ import (
 )
 
 func (g *Game) getCoastlineThreshold(y int) float64 {
-	h := float64(g.height - 4)
+	h := float64(g.worldHeight)
 	if h <= 0 {
 		h = 1
 	}
@@ -16,7 +16,7 @@ func (g *Game) getCoastlineThreshold(y int) float64 {
 	wiggle := math.Sin(float64(y)*0.7)*2.0 + math.Cos(float64(y)*0.3)*1.0
 	
 	// Sine-curve bay coast: wide water bay in the center (y ≈ h/2), wrapping around north and south
-	return float64(g.width)/3.0 + math.Sin(float64(y)/h*math.Pi)*(float64(g.width)/2.2) + wiggle
+	return float64(g.worldWidth)/3.0 + math.Sin(float64(y)/h*math.Pi)*(float64(g.worldWidth)/2.2) + wiggle
 }
 
 func (g *Game) getCoastlineStyle(x, y int) (bool, bool) {
@@ -33,8 +33,8 @@ func (g *Game) getCoastlineStyle(x, y int) (bool, bool) {
 }
 
 func (g *Game) isRoad(x, y int) bool {
-	h := g.height - 4
-	w := g.width
+	h := g.worldHeight
+	w := g.worldWidth
 
 	// Vertical road center: x == w - 15. Width: 3 cells (x in [w-16, w-14]) from y = h/8 to h*7/8.
 	if x >= w-16 && x <= w-14 && y >= h/8 && y <= h*7/8 {
@@ -94,20 +94,27 @@ func (g *Game) getMapStyle(x, y int) tcell.Style {
 	return tcell.StyleDefault.Background(navyBlue).Foreground(navyBlue)
 }
 
+func (g *Game) getCameraOffset() (int, int) {
+	return g.camX, g.camY
+}
+
 // draw handles screen rendering
 func (g *Game) draw() {
+	camX, camY := g.getCameraOffset()
 	// 1. Draw Ocean Background & Aircraft Carrier
-	for y := 0; y < g.height-4; y++ {
-		for x := 0; x < g.width; x++ {
-			style := g.getMapStyle(x, y)
+	for sy := 0; sy < g.height-4; sy++ {
+		for sx := 0; sx < g.width; sx++ {
+			vx := sx + camX
+			vy := sy + camY
+			style := g.getMapStyle(vx, vy)
 			r := ' '
 
-			// Add carrier markings on deck cells
-			if x >= g.carrier.X && x < g.carrier.X+g.carrier.Width &&
-				y >= g.carrier.Y && y < g.carrier.Y+g.carrier.Height {
+			// Check if the coordinate falls on the aircraft carrier deck
+			if vx >= g.carrier.X && vx < g.carrier.X+g.carrier.Width &&
+				vy >= g.carrier.Y && vy < g.carrier.Y+g.carrier.Height {
 
-				cy := y - g.carrier.Y
-				cx := x - g.carrier.X
+				cy := vy - g.carrier.Y
+				cx := vx - g.carrier.X
 
 				leftTaper := (cy == 0 && cx < 4) || (cy == g.carrier.Height-1 && cx < 4)
 				rightTaper := (cy == 0 && cx >= g.carrier.Width-4) || (cy == g.carrier.Height-1 && cx >= g.carrier.Width-4)
@@ -135,16 +142,16 @@ func (g *Game) draw() {
 						}
 					}
 				}
-			} else if isLand, isSand := g.getCoastlineStyle(x, y); isLand {
-				if !isSand && g.isRoad(x, y) {
+			} else if isLand, isSand := g.getCoastlineStyle(vx, vy); isLand {
+				if !isSand && g.isRoad(vx, vy) {
 					// Asphalt/Road styling
-					hVal := g.height - 4
-					wVal := g.width
-					isVerticalCenter := (x == wVal - 15)
-					isHorizontalCenter := (y == hVal / 2)
+					hVal := g.worldHeight
+					wVal := g.worldWidth
+					isVerticalCenter := (vx == wVal - 15)
+					isHorizontalCenter := (vy == hVal / 2)
 					
-					if (isVerticalCenter && y >= hVal/6 && y <= hVal*5/6 && y%2 == 0) ||
-					   (isHorizontalCenter && x >= wVal-15 && x <= wVal-8 && x%2 == 0) {
+					if (isVerticalCenter && vy >= hVal/6 && vy <= hVal*5/6 && vy%2 == 0) ||
+					   (isHorizontalCenter && vx >= wVal-15 && vx <= wVal-8 && vx%2 == 0) {
 						if isVerticalCenter {
 							r = '|'
 						} else {
@@ -153,7 +160,7 @@ func (g *Game) draw() {
 						style = tcell.StyleDefault.Background(tcell.ColorNames["dimgray"]).Foreground(tcell.ColorNames["yellow"])
 					} else {
 						// Subtle concrete grain dots
-						hash := (x*13 + y*17) % 6
+						hash := (vx*13 + vy*17) % 6
 						if hash == 0 {
 							r = '.'
 							style = tcell.StyleDefault.Background(tcell.ColorNames["dimgray"]).Foreground(tcell.ColorNames["lightgrey"])
@@ -164,7 +171,7 @@ func (g *Game) draw() {
 					}
 				} else if isSand {
 					// Sand shore ripple/pebbles
-					hash := (x*17 + y*13) % 4
+					hash := (vx*17 + vy*13) % 4
 					if hash == 0 {
 						r = '.'
 					} else {
@@ -172,7 +179,7 @@ func (g *Game) draw() {
 					}
 				} else {
 					// Grass interior runes
-					hash := (x*7 + y*11) % 5
+					hash := (vx*7 + vy*11) % 5
 					if hash == 0 {
 						r = ','
 					} else if hash == 1 {
@@ -183,13 +190,13 @@ func (g *Game) draw() {
 				}
 			} else {
 				// Sea waves
-				isWave := (x*9 + y*13) % 23 == 0
+				isWave := (vx*9 + vy*13) % 23 == 0
 				if isWave {
 					r = '~'
 				}
 			}
 
-			g.screen.SetContent(x, y, r, nil, style)
+			g.screen.SetContent(sx, sy, r, nil, style)
 		}
 	}
 
@@ -259,8 +266,11 @@ func (g *Game) draw() {
 				smX := sx + h/2 + wiggle
 				smY := sy - h
 
+				ssmX := smX - camX
+				ssmY := smY - camY
+
 				// Ensure within map boundaries and above HUD
-				if smX < 0 || smX >= g.width || smY < 0 || smY >= g.height-4 {
+				if ssmX < 0 || ssmX >= g.width || ssmY < 0 || ssmY >= g.height-4 {
 					continue
 				}
 
@@ -313,7 +323,7 @@ func (g *Game) draw() {
 					}
 
 					// Blend smoke particle dynamically onto background style
-					g.screen.SetContent(smX, smY, r, nil, bgStyle.Foreground(fg))
+					g.screen.SetContent(ssmX, ssmY, r, nil, bgStyle.Foreground(fg))
 				}
 			}
 		}
@@ -410,13 +420,15 @@ func (g *Game) draw() {
 		bx := int(math.Round(bullet.X))
 		by := int(math.Round(bullet.Y))
 
-		if bx >= 0 && bx < g.width && by >= 0 && by < g.height-4 {
+		sbx := bx - camX
+		sby := by - camY
+		if sbx >= 0 && sbx < g.width && sby >= 0 && sby < g.height-4 {
 			bgStyle := g.getMapStyle(bx, by)
 			color := tcell.ColorYellow
 			if bullet.IsEnemy {
 				color = tcell.ColorRed
 			}
-			g.screen.SetContent(bx, by, '•', nil, bgStyle.Foreground(color))
+			g.screen.SetContent(sbx, sby, '•', nil, bgStyle.Foreground(color))
 		}
 	}
 
@@ -429,7 +441,10 @@ func (g *Game) draw() {
 		mx := int(math.Round(m.X))
 		my := int(math.Round(m.Y))
 
-		if mx >= 0 && mx < g.width && my >= 0 && my < g.height-4 {
+		smx := mx - camX
+		smy := my - camY
+
+		if smx >= 0 && smx < g.width && smy >= 0 && smy < g.height-4 {
 			bgStyle := g.getMapStyle(mx, my)
 			
 			// Select caret/missile arrow based on the dominant direction of its velocity
@@ -454,7 +469,7 @@ func (g *Game) draw() {
 				color = tcell.ColorRed
 			}
 			style := bgStyle.Foreground(color).Bold(true)
-			g.screen.SetContent(mx, my, char, nil, style)
+			g.screen.SetContent(smx, smy, char, nil, style)
 		}
 	}
 
@@ -464,7 +479,10 @@ func (g *Game) draw() {
 		bx := exp.X
 		by := exp.Y
 
-		if bx >= 0 && bx < g.width && by >= 0 && by < g.height-4 {
+		sbx := bx - camX
+		sby := by - camY
+
+		if sbx >= 0 && sbx < g.width && sby >= 0 && sby < g.height-4 {
 			bgStyle := g.getMapStyle(bx, by)
 			var r rune
 			var fg tcell.Color
@@ -480,7 +498,7 @@ func (g *Game) draw() {
 				fg = tcell.ColorDarkGray
 			}
 
-			g.screen.SetContent(bx, by, r, nil, bgStyle.Foreground(fg))
+			g.screen.SetContent(sbx, sby, r, nil, bgStyle.Foreground(fg))
 		}
 	}
 
@@ -500,8 +518,11 @@ func (g *Game) draw() {
 			mx := hx + c - 2
 			my := hy + r - 1
 
+			smx := mx - camX
+			smy := my - camY
+
 			// Check screen boundary limits
-			if mx < 0 || mx >= g.width || my < 0 || my >= g.height-4 {
+			if smx < 0 || smx >= g.width || smy < 0 || smy >= g.height-4 {
 				continue
 			}
 
@@ -533,7 +554,7 @@ func (g *Game) draw() {
 			}
 
 			style := bgStyle.Foreground(fg)
-			g.screen.SetContent(mx, my, char, nil, style)
+			g.screen.SetContent(smx, smy, char, nil, style)
 		}
 	}
 
@@ -669,8 +690,14 @@ func (g *Game) drawHUD() {
 			break
 		}
 	}
-	if hasIncoming && (g.heli.RotorState/2)%2 == 0 {
-		g.drawString(g.width-33, hudY, "⚠️ WARNING: INCOMING MISSILE ⚠️", borderStyle.Foreground(tcell.ColorRed).Bold(true))
+	if hasIncoming {
+		if (g.heli.RotorState/2)%2 == 0 {
+			g.drawString(g.width-33, hudY, "⚠️ WARNING: INCOMING MISSILE ⚠️", borderStyle.Foreground(tcell.ColorRed).Bold(true))
+		}
+		// Tactical audio warning bell: beep every 20 frames (800ms) to avoid audio clutter
+		if g.Ticks%20 == 0 {
+			_ = g.screen.Beep()
+		}
 	}
 
 	// Clear background of lines H-3, H-2, H-1
@@ -731,7 +758,8 @@ func (g *Game) drawHUD() {
 
 	// Display row H-3: Instruments
 	instrumentText := fmt.Sprintf(
-		"SPEED: %3d KTS   |   HEADING: %3d° (%-2s)   |   ALTITUDE: %3d FT   |   FUEL: ",
+		"GPS: (%d, %d)   |   SPEED: %3d KTS   |   HEADING: %3d° (%-2s)   |   ALTITUDE: %3d FT   |   FUEL: ",
+		int(math.Round(g.heli.X)), int(math.Round(g.heli.Y)),
 		speedKnots, dirDegrees[g.heli.Dir], dirNames[g.heli.Dir], altitudeFeet,
 	)
 	g.drawString(2, hudY+1, instrumentText, hudStyle)
@@ -884,9 +912,12 @@ func (g *Game) drawString(x, y int, str string, style tcell.Style) {
 
 // drawCell draws a single cell with safety boundary checking and dynamic background styling
 func (g *Game) drawCell(x, y int, r rune, fg tcell.Color) {
-	if x >= 0 && x < g.width && y >= 0 && y < g.height-4 {
+	camX, camY := g.getCameraOffset()
+	sx := x - camX
+	sy := y - camY
+	if sx >= 0 && sx < g.width && sy >= 0 && sy < g.height-4 {
 		bgStyle := g.getMapStyle(x, y)
-		g.screen.SetContent(x, y, r, nil, bgStyle.Foreground(fg))
+		g.screen.SetContent(sx, sy, r, nil, bgStyle.Foreground(fg))
 	}
 }
 
@@ -982,7 +1013,7 @@ func (g *Game) drawFactorySmoke(sx, sy int) {
 		smX := sx + h/2 + wiggle
 		smY := sy - h
 
-		if smX < 0 || smX >= g.width || smY < 0 || smY >= g.height-4 {
+		if smX < 0 || smX >= g.worldWidth || smY < 0 || smY >= g.worldHeight {
 			continue
 		}
 

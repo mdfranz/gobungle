@@ -21,7 +21,7 @@ func (g *Game) updateBullets() {
 		b.X += b.VX
 		b.Y += b.VY
 
-		if b.X < 0 || b.X >= float64(g.width) || b.Y < 0 || b.Y >= float64(g.height-4) {
+		if b.X < 0 || b.X >= float64(g.worldWidth) || b.Y < 0 || b.Y >= float64(g.worldHeight) {
 			b.Active = false
 			continue
 		}
@@ -58,7 +58,7 @@ func (g *Game) updateMissiles() {
 		m.X += m.VX
 		m.Y += m.VY
 
-		if m.X < 0 || m.X >= float64(g.width) || m.Y < 0 || m.Y >= float64(g.height-4) {
+		if m.X < 0 || m.X >= float64(g.worldWidth) || m.Y < 0 || m.Y >= float64(g.worldHeight) {
 			m.Active = false
 			continue
 		}

@@ -19,6 +19,7 @@ const (
 func (g *Game) updatePhysics() {
 	g.Ticks++
 	g.updateHelicopter()
+	g.updateCamera() // Update scroll-window camera position
 	g.updateWeaponCooldowns()
 	g.updateCarrierDefense()
 	g.updateProjectiles()
@@ -33,6 +34,56 @@ func (g *Game) updatePhysics() {
 func (g *Game) updateHelicopter() {
 	if g.heli.TakeoffCooldown > 0 {
 		g.heli.TakeoffCooldown--
+	}
+	if g.heli.RespawnTimer > 0 {
+		g.heli.RespawnTimer--
+		if g.heli.RespawnTimer%4 == 0 {
+			// Spawn random small secondary explosions around the wreckage
+			g.explosions = append(g.explosions, Explosion{
+				X:   int(math.Round(g.heli.X)) + rand.Intn(5) - 2,
+				Y:   int(math.Round(g.heli.Y)) + rand.Intn(3) - 1,
+				Age: rand.Intn(3),
+			})
+		}
+		if g.heli.RespawnTimer == 0 {
+			// Complete respawn onto the carrier pad
+			padX := g.carrier.X + g.carrier.Width/3
+			padY := g.carrier.Y + g.carrier.Height/2
+			g.heli.X = float64(padX)
+			g.heli.Y = float64(padY)
+			g.heli.VX = 0
+			g.heli.VY = 0
+			g.heli.Fuel = 100.0
+			g.heli.Armor = 100.0
+			g.heli.MissileAmmo = 4
+			g.heli.Landed = true
+			g.heli.TakeoffCooldown = 25
+
+			// Re-center camera over carrier pad
+			g.camX = padX - g.width/2
+			g.camY = padY - (g.height-4)/2
+			if g.camX < 0 {
+				g.camX = 0
+			}
+			if g.worldWidth > g.width {
+				if g.camX > g.worldWidth-g.width {
+					g.camX = g.worldWidth - g.width
+				}
+			} else {
+				g.camX = 0
+			}
+			if g.camY < 0 {
+				g.camY = 0
+			}
+			if g.worldHeight > g.height-4 {
+				if g.camY > g.worldHeight-(g.height-4) {
+					g.camY = g.worldHeight - (g.height - 4)
+				}
+			} else {
+				g.camY = 0
+			}
+		}
+		return
 	}
 	if g.heli.Landed {
 		// Refuel slowly on carrier landing pad
@@ -73,13 +124,28 @@ func (g *Game) updateHelicopter() {
 					carrierDronesCount++
 				}
 			}
-			if carrierDronesCount < 2 {
+			if carrierDronesCount < 3 {
 				angle := 0.0
-				if carrierDronesCount > 0 {
+				if carrierDronesCount == 1 {
 					for d := 0; d < len(g.drones); d++ {
 						if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
-							angle = g.drones[d].Angle + math.Pi
+							angle = g.drones[d].Angle + 2.0*math.Pi/3.0
 							break
+						}
+					}
+				} else if carrierDronesCount == 2 {
+					var angles []float64
+					for d := 0; d < len(g.drones); d++ {
+						if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
+							angles = append(angles, g.drones[d].Angle)
+						}
+					}
+					if len(angles) == 2 {
+						mid := (angles[0] + angles[1]) / 2.0
+						if math.Abs(angles[0]-angles[1]) > math.Pi {
+							angle = mid
+						} else {
+							angle = mid + math.Pi
 						}
 					}
 				}
@@ -147,28 +213,31 @@ func (g *Game) updateHelicopter() {
 					}
 				}
 
-				padX := g.carrier.X + g.carrier.Width/3
-				padY := g.carrier.Y + g.carrier.Height/2
-				g.heli.X = float64(padX)
-				g.heli.Y = float64(padY)
-				g.heli.VX = 0
-				g.heli.VY = 0
-				g.heli.Fuel = 100.0
-				g.heli.Armor = 100.0
-				g.heli.MissileAmmo = 4
-				g.heli.Landed = true
-				g.heli.TakeoffCooldown = 25
+				g.heli.Armor = 0
+				// If there are active enemy missiles in flight (on launch), add a slight additional delay after getting killed
+				hasIncoming := false
+				for j := 0; j < len(g.missiles); j++ {
+					if g.missiles[j].Active && g.missiles[j].IsEnemy {
+						hasIncoming = true
+						break
+					}
+				}
+				if hasIncoming {
+					g.heli.RespawnTimer = 65 // Set 2.6 seconds delay (65 ticks @ 25 FPS)
+				} else {
+					g.heli.RespawnTimer = 40 // Set 1.6 seconds delay (40 ticks @ 25 FPS)
+				}
 			}
 		}
 
-		mapHeight := float64(g.height - 4)
+		mapHeight := float64(g.worldHeight)
 
 		if g.heli.X < 1.0 {
 			g.heli.X = 1.0
 			g.heli.VX = -g.heli.VX * 0.4
 		}
-		if g.heli.X > float64(g.width-2) {
-			g.heli.X = float64(g.width - 2)
+		if g.heli.X > float64(g.worldWidth-2) {
+			g.heli.X = float64(g.worldWidth - 2)
 			g.heli.VX = -g.heli.VX * 0.4
 		}
 		if g.heli.Y < 1.0 {
@@ -198,6 +267,60 @@ func (g *Game) updateHelicopter() {
 		} else {
 			g.heli.RotorState = (g.heli.RotorState + 1) % len(rotorFrames)
 		}
+	}
+}
+
+func (g *Game) updateCamera() {
+	hx := int(math.Round(g.heli.X))
+	hy := int(math.Round(g.heli.Y))
+
+	// Margin values (20% of screen size)
+	marginW := int(float64(g.width) * 0.20)
+	marginH := int(float64(g.height-4) * 0.20)
+
+	// Keep margins reasonable
+	if marginW < 5 {
+		marginW = 5
+	}
+	if marginH < 3 {
+		marginH = 3
+	}
+
+	// 1. Check horizontal boundaries (camera dead zone)
+	if hx-g.camX < marginW {
+		g.camX = hx - marginW
+	} else if hx-g.camX > g.width-marginW {
+		g.camX = hx - (g.width - marginW)
+	}
+
+	// 2. Check vertical boundaries (camera dead zone)
+	if hy-g.camY < marginH {
+		g.camY = hy - marginH
+	} else if hy-g.camY > (g.height-4)-marginH {
+		g.camY = hy - ((g.height - 4) - marginH)
+	}
+
+	// 3. Clamp camera to world boundaries
+	if g.camX < 0 {
+		g.camX = 0
+	}
+	if g.worldWidth > g.width {
+		if g.camX > g.worldWidth-g.width {
+			g.camX = g.worldWidth - g.width
+		}
+	} else {
+		g.camX = 0
+	}
+
+	if g.camY < 0 {
+		g.camY = 0
+	}
+	if g.worldHeight > g.height-4 {
+		if g.camY > g.worldHeight-(g.height-4) {
+			g.camY = g.worldHeight - (g.height - 4)
+		}
+	} else {
+		g.camY = 0
 	}
 }
 
@@ -419,6 +542,30 @@ func (g *Game) resetRound() {
 	g.heli.MissileAmmo = 4
 	g.heli.TakeoffCooldown = 25
 
+	// Reset camera to center around the carrier pad
+	g.camX = padX - g.width/2
+	g.camY = padY - (g.height-4)/2
+	if g.camX < 0 {
+		g.camX = 0
+	}
+	if g.worldWidth > g.width {
+		if g.camX > g.worldWidth-g.width {
+			g.camX = g.worldWidth - g.width
+		}
+	} else {
+		g.camX = 0
+	}
+	if g.camY < 0 {
+		g.camY = 0
+	}
+	if g.worldHeight > g.height-4 {
+		if g.camY > g.worldHeight-(g.height-4) {
+			g.camY = g.worldHeight - (g.height - 4)
+		}
+	} else {
+		g.camY = 0
+	}
+
 	g.bullets = g.bullets[:0]
 	g.missiles = g.missiles[:0]
 
@@ -470,29 +617,29 @@ func (g *Game) resetRound() {
 		tank.SinkingTimer = 0
 		tank.FireCooldown = 60 + rand.Intn(100)
 		if tIdx == 0 {
-			tank.X = float64(g.width - 15)
-			tank.Y = float64(g.height * 5 / 16)
+			tank.X = float64(g.worldWidth - 15)
+			tank.Y = float64(g.worldHeight * 5 / 16)
 			tank.VY = 0.04
 			tank.VX = 0
 			tank.PatrolDir = 0
-			tank.MinCoord = float64(g.height / 8)
-			tank.MaxCoord = float64(g.height / 2)
+			tank.MinCoord = float64(g.worldHeight / 8)
+			tank.MaxCoord = float64(g.worldHeight / 2)
 		} else if tIdx == 1 {
-			tank.X = float64(g.width - 15)
-			tank.Y = float64(g.height * 11 / 16)
+			tank.X = float64(g.worldWidth - 15)
+			tank.Y = float64(g.worldHeight * 11 / 16)
 			tank.VY = -0.04
 			tank.VX = 0
 			tank.PatrolDir = 0
-			tank.MinCoord = float64(g.height / 2)
-			tank.MaxCoord = float64(g.height * 7 / 8)
+			tank.MinCoord = float64(g.worldHeight / 2)
+			tank.MaxCoord = float64(g.worldHeight * 7 / 8)
 		} else if tIdx == 2 {
-			tank.X = float64(g.width - 11)
-			tank.Y = float64(g.height / 2)
+			tank.X = float64(g.worldWidth - 11)
+			tank.Y = float64(g.worldHeight / 2)
 			tank.VX = 0.06
 			tank.VY = 0
 			tank.PatrolDir = 1
-			tank.MinCoord = float64(g.width - 15)
-			tank.MaxCoord = float64(g.width - 7)
+			tank.MinCoord = float64(g.worldWidth - 15)
+			tank.MaxCoord = float64(g.worldWidth - 7)
 		}
 	}
 
@@ -506,7 +653,7 @@ func (g *Game) resetRound() {
 }
 
 func (g *Game) initStaticAAs() {
-	h := g.height - 4
+	h := g.worldHeight
 	if h <= 0 {
 		h = 1
 	}

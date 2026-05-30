@@ -14,6 +14,10 @@ type Game struct {
 	screen         tcell.Screen
 	width          int
 	height         int
+	worldWidth     int
+	worldHeight    int
+	camX           int
+	camY           int
 	quit           chan struct{}
 	quitConfirming bool
 	gameOver       bool
@@ -43,9 +47,19 @@ type Game struct {
 func New(screen tcell.Screen) *Game {
 	w, h := screen.Size()
 
+	playableHeight := h - 4
+	if playableHeight < 10 {
+		playableHeight = 10
+	}
+	worldWidth := w * 2
+	if worldWidth < 80 {
+		worldWidth = 80
+	}
+	worldHeight := playableHeight * 2
+
 	carrier := Carrier{
-		X:      w / 6,
-		Y:      h / 4,
+		X:      worldWidth / 10,
+		Y:      worldHeight / 4,
 		Width:  26,
 		Height: 6,
 		Health: 100.0,
@@ -65,15 +79,15 @@ func New(screen tcell.Screen) *Game {
 	}
 
 	boats := []Boat{
-		{X: 15, Y: float64(h - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 200},
+		{X: 15, Y: float64(worldHeight - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 200},
 		{X: 20, Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 400},
-		{X: 25, Y: float64(h - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 600},
+		{X: 25, Y: float64(worldHeight - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 600},
 	}
 
 	factories := []Factory{
-		{X: float64(w - 15), Y: float64(h / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 100, DronesRemaining: 8},
-		{X: float64(w - 7), Y: float64(h / 2), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 150, DronesRemaining: 8},
-		{X: float64(w - 15), Y: float64(h * 7 / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 200, DronesRemaining: 8},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 100, DronesRemaining: 8},
+		{X: float64(worldWidth - 7), Y: float64(worldHeight / 2), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 150, DronesRemaining: 8},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight * 7 / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 200, DronesRemaining: 8},
 	}
 
 	drones := make([]Drone, 0, len(factories)*2+2)
@@ -83,19 +97,41 @@ func New(screen tcell.Screen) *Game {
 	}
 	cx := float64(carrier.X + carrier.Width/2)
 	cy := float64(carrier.Y + carrier.Height/2)
+	// Add 3 active drones around the Carrier (represented by FactoryIdx = -1) spaced 120 degrees apart
 	drones = append(drones, Drone{X: cx + 12.0, Y: cy, Active: true, Angle: 0.0, FactoryIdx: -1})
-	drones = append(drones, Drone{X: cx - 12.0, Y: cy, Active: true, Angle: 3.14159, FactoryIdx: -1})
+	drones = append(drones, Drone{X: cx, Y: cy, Active: true, Angle: 2.0 * math.Pi / 3.0, FactoryIdx: -1})
+	drones = append(drones, Drone{X: cx, Y: cy, Active: true, Angle: 4.0 * math.Pi / 3.0, FactoryIdx: -1})
 
 	tanks := []Tank{
-		{X: float64(w - 15), Y: float64(h * 5 / 16), VY: 0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(h / 8), MaxCoord: float64(h / 2)},
-		{X: float64(w - 15), Y: float64(h * 11 / 16), VY: -0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(h / 2), MaxCoord: float64(h * 7 / 8)},
-		{X: float64(w - 11), Y: float64(h / 2), VX: 0.06, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 1, MinCoord: float64(w - 15), MaxCoord: float64(w - 7)},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight * 5 / 16), VY: 0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(worldHeight / 8), MaxCoord: float64(worldHeight / 2)},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight * 11 / 16), VY: -0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(worldHeight / 2), MaxCoord: float64(worldHeight * 7 / 8)},
+		{X: float64(worldWidth - 11), Y: float64(worldHeight / 2), VX: 0.06, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 1, MinCoord: float64(worldWidth - 15), MaxCoord: float64(worldWidth - 7)},
+	}
+
+	// Compute initial camera offset centered on the helicopter
+	camX := int(math.Round(heli.X)) - w/2
+	camY := int(math.Round(heli.Y)) - playableHeight/2
+	if camX < 0 {
+		camX = 0
+	}
+	if camX > worldWidth-w {
+		camX = worldWidth - w
+	}
+	if camY < 0 {
+		camY = 0
+	}
+	if camY > worldHeight-playableHeight {
+		camY = worldHeight - playableHeight
 	}
 
 	g := &Game{
 		screen:       screen,
 		width:        w,
 		height:       h,
+		worldWidth:   worldWidth,
+		worldHeight:  worldHeight,
+		camX:         camX,
+		camY:         camY,
 		quit:         make(chan struct{}),
 		Wave:         1,
 		heli:         heli,
