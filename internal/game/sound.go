@@ -62,42 +62,44 @@ func (s *SynthSound) Stream(samples [][2]float64) (n int, ok bool) {
 
 		switch s.soundType {
 		case "warning":
-			// Pulsating dual tone alarm
+			// Two-tone repeating alarm: 880/660Hz alternating at 8Hz, abrupt cutoff
 			freq := 880.0
 			if int(s.time*8)%2 == 0 {
 				freq = 660.0
 			}
 			val = math.Sin(2 * math.Pi * freq * s.time)
-			if progress > 0.8 {
-				val *= (1.0 - progress) / 0.2
+			// Hard square-wave gating at 4Hz to match C64 pulsed beep rhythm
+			if int(s.time*4)%2 == 0 {
+				val = 0
+			}
+			if progress > 0.85 {
+				val *= (1.0 - progress) / 0.15
 			}
 
 		case "laser":
-			// Fast descending sweep (700Hz -> 100Hz)
-			freq := 700.0 - 600.0*progress
-			val = math.Sin(2 * math.Pi * freq * s.time)
-			val *= math.Exp(-6.0 * progress)
+			// C64 cannon: very short noise burst, sharp attack, fast exponential decay
+			noise := rand.Float64()*2.0 - 1.0
+			freq := 320.0 - 260.0*progress
+			tone := math.Sin(2*math.Pi*freq*s.time) * 0.4
+			val = 0.6*noise + tone
+			val *= math.Exp(-18.0 * progress)
 
 		case "missile":
-			// Ascending sweep (150Hz -> 900Hz) + some noise modulation
-			freq := 150.0 + 750.0*progress
+			// Whoosh: shaped broadband noise with subtle tonal body
 			noise := rand.Float64()*2.0 - 1.0
-			val = math.Sin(2*math.Pi*freq*s.time) + 0.15*noise
-			amp := 1.0
-			if progress < 0.15 {
-				amp = progress / 0.15
-			} else if progress > 0.7 {
-				amp = (1.0 - progress) / 0.3
-			}
-			val *= amp
+			freq := 200.0 + 120.0*math.Sin(math.Pi*progress)
+			tone := math.Sin(2 * math.Pi * freq * s.time)
+			val = 0.8*noise + 0.2*tone
+			val *= math.Sin(math.Pi * progress)
 
 		case "explosion":
-			// Decaying low frequency rumble + white noise
+			// C64-style boom: heavy noise + deep sub-bass ~30Hz, fast initial punch then slow rumble
 			noise := rand.Float64()*2.0 - 1.0
-			freq := 100.0 * (1.0 - progress)
-			rumble := math.Sin(2 * math.Pi * freq * s.time)
-			val = 0.6*noise + 0.4*rumble
-			val *= math.Exp(-4.0 * progress)
+			subFreq := 30.0 * (1.0 - progress*0.5)
+			subBass := math.Sin(2 * math.Pi * subFreq * s.time)
+			rumble := math.Sin(2 * math.Pi * subFreq * 2 * s.time)
+			val = 0.55*noise + 0.30*subBass + 0.15*rumble
+			val *= math.Exp(-1.8 * progress)
 		}
 
 		samples[i][0] = val * s.volume
@@ -125,7 +127,7 @@ func PlaySound(soundType string) {
 	// Rate limit: don't play the same sound type more than once every 80ms
 	// to prevent volume clipping and muddy overlay in intense combat.
 	now := time.Now()
-	if prev, ok := lastPlayTime[soundType]; ok && now.Sub(prev) < 80*time.Millisecond {
+	if prev, ok := lastPlayTime[soundType]; ok && now.Sub(prev) < 60*time.Millisecond {
 		return
 	}
 	lastPlayTime[soundType] = now
@@ -136,17 +138,17 @@ func PlaySound(soundType string) {
 
 	switch soundType {
 	case "warning":
-		dur = 150 * time.Millisecond
-		volume = 0.18
+		dur = 500 * time.Millisecond // long enough to hear the gated pulse rhythm
+		volume = 0.20
 	case "laser":
-		dur = 100 * time.Millisecond
-		volume = 0.12
+		dur = 55 * time.Millisecond // C64: ~30-40ms burst; 55ms gives audible tail
+		volume = 0.28
 	case "missile":
-		dur = 300 * time.Millisecond
-		volume = 0.18
+		dur = 400 * time.Millisecond
+		volume = 0.20
 	case "explosion":
-		dur = 500 * time.Millisecond
-		volume = 0.25
+		dur = 800 * time.Millisecond
+		volume = 0.38
 	default:
 		return
 	}

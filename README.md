@@ -76,6 +76,25 @@ The visual state of your carrier dynamically reflects its health (0% - 100%):
 * [Go](https://go.dev/doc/install) 1.20 or newer installed.
 * A terminal supporting 256 colors or true color (e.g., standard Linux/macOS terminal).
 
+#### Linux Dependencies
+
+The audio library requires `pkg-config` and ALSA development headers. Install them before building:
+
+**Debian / Ubuntu:**
+```bash
+sudo apt-get install pkg-config libasound2-dev
+```
+
+**Fedora / RHEL / CentOS:**
+```bash
+sudo dnf install pkgconfig alsa-lib-devel
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S pkgconf alsa-lib
+```
+
 ### Compiling and Running
 1. Clone or navigate to the repository directory:
    ```bash
