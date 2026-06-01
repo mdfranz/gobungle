@@ -1,0 +1,39 @@
+version: '3'
+
+vars:
+  BINARY: 'gobungle{{if eq OS "windows"}}.exe{{else}}{{end}}'
+  LOGFILE: gobungle.log
+
+tasks:
+  default:
+    desc: Build the application (default task)
+    cmds:
+      - task: build
+
+  build:
+    desc: Compile the game binary
+    cmds:
+      - go build -o {{.BINARY}} ./cmd/gobungle
+
+  run:
+    desc: Compile and launch the game
+    deps: [build]
+    cmds:
+      - ./{{.BINARY}}
+
+  clean:
+    desc: Remove the compiled binary and log file
+    cmds:
+      - cmd: rm -f {{.BINARY}} {{.LOGFILE}}
+        platforms: [linux, darwin]
+      - cmd: cmd /c del /f /q {{.BINARY}} {{.LOGFILE}} 2>nul
+        platforms: [windows]
+        ignore_error: true
+
+  log:
+    desc: Tail the structured slog log file live
+    cmds:
+      - cmd: tail -f {{.LOGFILE}}
+        platforms: [linux, darwin]
+      - cmd: powershell -Command "Get-Content -Path {{.LOGFILE}} -Wait -Tail 20"
+        platforms: [windows]
