@@ -54,6 +54,7 @@ func (g *Game) checkDroneMissileInterceptions() {
 						g.explosions = append(g.explosions, Explosion{X: midX + ox, Y: midY + oy, Age: rand.Intn(4)})
 					}
 				}
+				PlaySound("explosion")
 				break
 			}
 		}
@@ -84,6 +85,7 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 		g.heli.Armor -= 15.0
 		slog.Info("Enemy projectile hit Player", "damage", 15.0, "remaining_armor", g.heli.Armor)
 		g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
+		PlaySound("explosion")
 
 		if g.heli.Armor <= 0 {
 			g.heli.Armor = 0
@@ -97,16 +99,19 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 				}
 			}
 
-			padX := g.carrier.X + g.carrier.Width/3
-			padY := g.carrier.Y + g.carrier.Height/2
-			g.heli.X = float64(padX)
-			g.heli.Y = float64(padY)
-			g.heli.VX = 0
-			g.heli.VY = 0
-			g.heli.Fuel = 100.0
-			g.heli.Armor = 100.0
-			g.heli.MissileAmmo = 4
-			g.heli.Landed = true
+			// If there are active enemy missiles in flight (on launch), add a slight additional delay after getting killed
+			hasIncoming := false
+			for j := 0; j < len(g.missiles); j++ {
+				if g.missiles[j].Active && g.missiles[j].IsEnemy {
+					hasIncoming = true
+					break
+				}
+			}
+			if hasIncoming {
+				g.heli.RespawnTimer = 65 // Set 2.6 seconds delay (65 ticks @ 25 FPS)
+			} else {
+				g.heli.RespawnTimer = 40 // Set 1.6 seconds delay (40 ticks @ 25 FPS)
+			}
 		}
 	}
 }
@@ -124,6 +129,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 				boat.Health--
 				slog.Info("Player bullet hit Boat", "boat_idx", j, "health", boat.Health, "max_health", boat.MaxHealth)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
+				PlaySound("explosion")
 
 				if boat.Health <= 0 {
 					boat.Active = false
@@ -138,6 +144,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 			} else {
 				slog.Info("Player bullet hit already-sinking Boat", "boat_idx", j)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
+				PlaySound("explosion")
 			}
 			return
 		}
@@ -154,6 +161,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 			drone.Active = false
 			slog.Info("Player shot down an Air Defense Drone!", "drone_idx", d)
 			g.explosions = append(g.explosions, Explosion{X: int(math.Round(drone.X)), Y: int(math.Round(drone.Y)), Age: 0})
+			PlaySound("explosion")
 			return
 		}
 	}
@@ -167,6 +175,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 				fact.Health--
 				slog.Info("Player bullet hit Factory", "idx", fIdx, "health", fact.Health, "max_health", fact.MaxHealth)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
+				PlaySound("explosion")
 
 				if fact.Health <= 0 {
 					fact.SinkingTimer = 45
@@ -186,6 +195,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 				tank.Health--
 				slog.Info("Player bullet hit Tank", "tank_idx", tIdx, "health", tank.Health, "max_health", tank.MaxHealth)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
+				PlaySound("explosion")
 
 				if tank.Health <= 0 {
 					tank.SinkingTimer = 45
@@ -205,6 +215,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 				sa.Health--
 				slog.Info("Player bullet hit Static AA", "idx", saIdx, "health", sa.Health, "max_health", sa.MaxHealth)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
+				PlaySound("explosion")
 
 				if sa.Health <= 0 {
 					sa.SinkingTimer = 45
@@ -242,6 +253,7 @@ func (g *Game) checkEnemyMissileVsCarrier(m *Missile) {
 	m.Active = false
 	g.carrier.Health -= 25.0
 	slog.Warn("Enemy guided missile hit the Carrier!", "damage", 25.0, "remaining_health", g.carrier.Health)
+	PlaySound("explosion")
 
 	for ddx := -2; ddx <= 2; ddx++ {
 		for ddy := -1; ddy <= 1; ddy++ {
@@ -284,6 +296,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 				slog.Info("Player guided missile hit already-sinking Boat", "boat_idx", j)
 			}
 			g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
+			PlaySound("explosion")
 			return
 		}
 	}
@@ -298,6 +311,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 				fact.Health = 0
 				slog.Info("Player guided missile hit Factory (CRITICAL HIT!)", "idx", fIdx)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
+				PlaySound("explosion")
 				return
 			}
 		}
@@ -313,6 +327,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 				tank.Health = 0
 				slog.Info("Player guided missile hit Tank (CRITICAL HIT!)", "tank_idx", tIdx)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
+				PlaySound("explosion")
 				return
 			}
 		}
@@ -328,6 +343,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 				sa.Health = 0
 				slog.Info("Player guided missile hit Static AA (CRITICAL HIT!)", "idx", saIdx)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
+				PlaySound("explosion")
 				return
 			}
 		}
@@ -350,6 +366,7 @@ func (g *Game) checkPlayerBulletsVsEnemyMissiles() {
 				bullet.Active = false
 				m.Active = false
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
+				PlaySound("explosion")
 				slog.Info("Player manual interception: Enemy missile shot down by aerial cannon!", "missile_idx", j, "bullet_idx", i)
 				break
 			}
@@ -377,6 +394,7 @@ func (g *Game) checkEnemyBulletsVsPlayerMissiles() {
 				bullet.Active = false
 				m.Active = false
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
+				PlaySound("explosion")
 				slog.Info("CIWS Interception Successful: Guided missile shot down by boat anti-air fire!", "missile_idx", j, "bullet_idx", i)
 				break
 			}

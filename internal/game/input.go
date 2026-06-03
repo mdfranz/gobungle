@@ -12,6 +12,10 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 	key := ev.Key()
 	ch := ev.Rune()
 
+	if g.heli.Armor <= 0 || g.heli.RespawnTimer > 0 {
+		return
+	}
+
 	padX := g.carrier.X + g.carrier.Width/3
 	padY := g.carrier.Y + g.carrier.Height/2
 	aligned := int(math.Round(g.heli.X)) >= padX-1 && int(math.Round(g.heli.X)) <= padX+1 &&
@@ -55,19 +59,9 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 		bvx := dx[g.heli.Dir] * bulletSpeed
 		bvy := dy[g.heli.Dir] * bulletSpeed
 
-		spawned := false
-		for i := 0; i < len(g.bullets); i++ {
-			if !g.bullets[i].Active {
-				g.bullets[i] = Bullet{X: bx, Y: by, StartX: bx, StartY: by, VX: bvx, VY: bvy, Active: true}
-				spawned = true
-				break
-			}
-		}
-		if !spawned && len(g.bullets) < 16 {
-			g.bullets = append(g.bullets, Bullet{X: bx, Y: by, StartX: bx, StartY: by, VX: bvx, VY: bvy, Active: true})
-		}
-
+		g.spawnPlayerBullet(bx, by, bvx, bvy)
 		slog.Info("Aerial cannon fired", "dir", g.heli.Dir, "degrees", dirDegrees[g.heli.Dir])
+		PlaySound("laser")
 		g.heli.FireCooldown = 4
 	}
 
@@ -92,20 +86,10 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 			mvx := dx[g.heli.Dir] * initialSpeed
 			mvy := dy[g.heli.Dir] * initialSpeed
 
-			spawned := false
-			for i := 0; i < len(g.missiles); i++ {
-				if !g.missiles[i].Active {
-					g.missiles[i] = Missile{X: mx, Y: my, StartX: mx, StartY: my, VX: mvx, VY: mvy, Active: true}
-					spawned = true
-					break
-				}
-			}
-			if !spawned && len(g.missiles) < 16 {
-				g.missiles = append(g.missiles, Missile{X: mx, Y: my, StartX: mx, StartY: my, VX: mvx, VY: mvy, Active: true})
-			}
-
+			g.spawnPlayerMissile(mx, my, mvx, mvy)
 			g.heli.MissileAmmo--
 			slog.Info("Guided missile fired", "dir", g.heli.Dir, "degrees", dirDegrees[g.heli.Dir], "ammo_remaining", g.heli.MissileAmmo)
+			PlaySound("missile")
 			g.heli.MissileCooldown = 12
 		}
 	}

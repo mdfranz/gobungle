@@ -1,14 +1,18 @@
 # Go toolchain path on this system
-GO ?= /home/mdfranz/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.2.linux-amd64/bin/go
+GO ?= go
 BINARY = gobungle
+SOUNDTEST = soundtest
 LOGFILE = gobungle.log
 
-.PHONY: all build run clean log help
+.PHONY: all build run clean log help soundtest
 
 all: build
 
 build:
 	$(GO) build -o $(BINARY) ./cmd/gobungle
+
+soundtest:
+	$(GO) build -o $(SOUNDTEST) ./cmd/soundtest
 
 run: build
 	./$(BINARY)

@@ -38,6 +38,7 @@ func main() {
 	s.SetStyle(tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorBlack))
 	s.Clear()
 
+	game.InitSound()
 	g := game.New(s)
 	g.Run()
 }

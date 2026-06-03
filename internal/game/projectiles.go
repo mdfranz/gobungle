@@ -21,7 +21,7 @@ func (g *Game) updateBullets() {
 		b.X += b.VX
 		b.Y += b.VY
 
-		if b.X < 0 || b.X >= float64(g.width) || b.Y < 0 || b.Y >= float64(g.height-4) {
+		if b.X < 0 || b.X >= float64(g.worldWidth) || b.Y < 0 || b.Y >= float64(g.worldHeight) {
 			b.Active = false
 			continue
 		}
@@ -58,7 +58,7 @@ func (g *Game) updateMissiles() {
 		m.X += m.VX
 		m.Y += m.VY
 
-		if m.X < 0 || m.X >= float64(g.width) || m.Y < 0 || m.Y >= float64(g.height-4) {
+		if m.X < 0 || m.X >= float64(g.worldWidth) || m.Y < 0 || m.Y >= float64(g.worldHeight) {
 			m.Active = false
 			continue
 		}
@@ -69,6 +69,89 @@ func (g *Game) updateMissiles() {
 			m.Active = false
 		}
 	}
+}
+
+// tickSinking advances the sinking death animation for one game tick.
+// scatterX/Y: half-range of random offset for periodic spark explosions.
+// gridW/H: half-width and half-height of the final explosion burst.
+// maxFinalAge: upper bound (exclusive) for final burst Age; 0 means Age is always 0.
+// Returns true when sinking is complete (timer reached 0).
+func (g *Game) tickSinking(timer *int, x, y float64, scatterX, scatterY, gridW, gridH, maxFinalAge int) bool {
+	*timer--
+	if *timer%3 == 0 {
+		offX := float64(rand.Intn(scatterX*2+1) - scatterX)
+		offY := float64(rand.Intn(scatterY*2+1) - scatterY)
+		g.explosions = append(g.explosions, Explosion{
+			X:   int(math.Round(x + offX)),
+			Y:   int(math.Round(y + offY)),
+			Age: 0,
+		})
+	}
+	if *timer > 0 {
+		return false
+	}
+	age := 0
+	if maxFinalAge > 0 {
+		age = rand.Intn(maxFinalAge)
+	}
+	for ddx := -gridW; ddx <= gridW; ddx++ {
+		for ddy := -gridH; ddy <= gridH; ddy++ {
+			g.explosions = append(g.explosions, Explosion{
+				X:   int(math.Round(x)) + ddx,
+				Y:   int(math.Round(y)) + ddy,
+				Age: age,
+			})
+		}
+	}
+	return true
+}
+
+func (g *Game) appendBullet(b Bullet, cap int) {
+	for k := range g.bullets {
+		if !g.bullets[k].Active {
+			g.bullets[k] = b
+			return
+		}
+	}
+	if len(g.bullets) < cap {
+		g.bullets = append(g.bullets, b)
+	}
+}
+
+func (g *Game) appendMissile(m Missile) {
+	for k := range g.missiles {
+		if !g.missiles[k].Active {
+			g.missiles[k] = m
+			return
+		}
+	}
+	if len(g.missiles) < 16 {
+		g.missiles = append(g.missiles, m)
+	}
+}
+
+func (g *Game) spawnEnemyBullet(x, y, vx, vy float64) {
+	g.appendBullet(Bullet{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true, IsEnemy: true}, 24)
+}
+
+func (g *Game) spawnCountermeasureBullet(x, y, vx, vy float64) {
+	g.appendBullet(Bullet{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true, IsEnemy: true, IsCountermeasure: true}, 24)
+}
+
+func (g *Game) spawnPlayerBullet(x, y, vx, vy float64) {
+	g.appendBullet(Bullet{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true}, 16)
+}
+
+func (g *Game) spawnEnemyMissile(x, y, vx, vy float64) {
+	g.appendMissile(Missile{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true, IsEnemy: true})
+}
+
+func (g *Game) spawnCarrierMissile(x, y, vx, vy float64) {
+	g.appendMissile(Missile{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true, IsCarrier: true})
+}
+
+func (g *Game) spawnPlayerMissile(x, y, vx, vy float64) {
+	g.appendMissile(Missile{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true})
 }
 
 func (g *Game) homeMissileToCarrier(m *Missile) {
@@ -201,17 +284,7 @@ func (g *Game) homeMissileToTarget(m *Missile) {
 			bvx := -(dxVec / minDist) * bulletSpeed
 			bvy := -(dyVec / minDist) * bulletSpeed
 
-			spawned := false
-			for k := 0; k < len(g.bullets); k++ {
-				if !g.bullets[k].Active {
-					g.bullets[k] = Bullet{X: targetBoat.X, Y: targetBoat.Y, StartX: targetBoat.X, StartY: targetBoat.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true, IsCountermeasure: true}
-					spawned = true
-					break
-				}
-			}
-			if !spawned && len(g.bullets) < 24 {
-				g.bullets = append(g.bullets, Bullet{X: targetBoat.X, Y: targetBoat.Y, StartX: targetBoat.X, StartY: targetBoat.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true, IsCountermeasure: true})
-			}
+			g.spawnCountermeasureBullet(targetBoat.X, targetBoat.Y, bvx, bvy)
 			slog.Info("CIWS engaged: Boat launched defensive anti-missile countermeasure!", "boat_x", targetBoat.X, "missile_x", m.X)
 		}
 	}
