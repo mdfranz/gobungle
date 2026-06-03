@@ -14,7 +14,7 @@ The goal of Gobungle is to provide a responsive, physics-driven combat experienc
 
 ## Core Systems
 
-The game engine coordinates six tightly-coupled subsystems within the `Game` struct:
+The game engine coordinates seven tightly-coupled subsystems within the `Game` struct:
 
 ```mermaid
 graph TB
@@ -37,16 +37,20 @@ graph TB
     
     Collision -->|vs Boats/Helicopter| Damage["Apply Damage"]
     Collision -->|vs Missiles| MissileDef["Missile Defeat<br/>Drone Shields"]
+    Collision -->|on events| Audio["Audio System<br/>(sound.go)"]
     
     Input["Input Handler<br/>(input.go)"]
     Input -->|getLockedTarget| LockOn["Target Lock-On"]
     
     Render -->|read Game state| RenderAll["Terrain, Entities,<br/>HUD, Sprites"]
     
+    Audio -->|on collision/action| SoundOut["Warning Beeps<br/>Laser Bursts<br/>Explosions"]
+    
     style GL fill:#4a90e2
     style Render fill:#50c878
     style Collision fill:#e74c3c
     style Input fill:#f39c12
+    style Audio fill:#9b59b6
 ```
 
 ### 1. Helicopter Flight System
@@ -71,6 +75,12 @@ The aircraft carrier is the player's home base and primary defense objective.
 - **Progressive Difficulty:** Each time a fleet of boats is destroyed, the next wave respawns with increased movement speed.
 - **Visual Effects:** Procedural explosions and rotor animations enhance the feedback loop.
 
+### 5. Audio System
+- **Sound Synthesis:** Procedurally generated audio effects using `tcell.Speaker` at 44.1 kHz.
+- **Sound Effects:** Warning beeps (incoming missiles), laser bursts (cannon fire), missile whooshes (launches), and explosions (wave completion, impacts).
+- **Rate Limiting:** Prevents audio clipping during intense combat by rate-limiting identical sounds to once per 60ms.
+- **Graceful Fallback:** Disables audio if speaker initialization fails, allowing silent-mode gameplay.
+
 ## Realized Architecture: Modular Subsystems
 
 The engine has been refactored toward **Option 4 (Modular Interface-Driven Composition)**, organizing code by responsibility within a single `internal/game` package:
@@ -81,12 +91,13 @@ The engine has been refactored toward **Option 4 (Modular Interface-Driven Compo
 internal/game/
 ├── game.go           — Game struct, New(), Run(), gameLoop(), inputLoop()
 ├── types.go          — Entity types, direction vectors, sprite data
-├── physics.go        — Physics coordinator, helicopter, carrier defense
-├── enemies.go        — Boat, factory, drone, tank, static AA updates
-├── projectiles.go    — Bullet/missile movement, homing, CIWS
-├── collision.go      — All collision detection
-├── input.go          — Input handling, target lock-on
-└── draw.go           — Rendering, HUD, sprites
+├── physics.go        — Physics coordinator, helicopter, carrier defense, wave progression
+├── enemies.go        — Boat, factory, drone, tank, static AA AI and movement
+├── projectiles.go    — Bullet/missile movement, homing logic, CIWS countermeasures
+├── collision.go      — All collision detection and damage resolution
+├── input.go          — Keyboard input handling, target lock-on calculation
+├── draw.go           — Rendering pipeline, HUD, sprite animations
+└── sound.go          — Audio synthesis, sound effects, rate limiting
 ```
 
 **Why This Approach Works:**
@@ -94,12 +105,13 @@ internal/game/
 - **Minimal Disruption:** The `Game` struct remains the "hub," but its responsibilities are logically partitioned. Physics code is isolated from input handling, which is isolated from collision logic.
 - **Testability:** Individual subsystems like `homeMissileToTarget()` or `checkPlayerBulletVsTargets()` can be tested in isolation by constructing a `Game` with test state and calling methods directly.
 - **Separation of Concerns:**
-  - `physics.go`: Entity dynamics, world simulation
-  - `enemies.go`: Enemy AI, independent from player systems
-  - `projectiles.go`: Pure movement and steering logic
-  - `collision.go`: Hit detection, consequence handling (damage, sinking, etc.)
-  - `input.go`: User commands, target locking
+  - `physics.go`: Entity dynamics, world simulation, wave progression
+  - `enemies.go`: Enemy AI and movement, independent from player systems
+  - `projectiles.go`: Pure movement, homing steering, CIWS logic
+  - `collision.go`: Hit detection, damage resolution, sinking sequences
+  - `input.go`: User commands, target lock-on calculation
   - `draw.go`: Rendering only; reads game state, no mutations
+  - `sound.go`: Audio synthesis and playback; triggered by collision and action events
 
 ### Pointer Aliasing and Lock-On Targets
 
@@ -140,3 +152,11 @@ If the game grows beyond ~50 entities, consider:
 - **Porting Effort:** High.
 
 **Current Status:** The modular subsystem approach is sufficient for the game's current scope and provides a clear ladder for future refactoring without rewriting the entire engine.
+
+## Implementation Reference
+
+For detailed code-level documentation and visual diagrams, see:
+
+- **[IMPL.md](./IMPL.md)** — High-level module overview, module flow, and implementation specifics of each subsystem.
+- **[internal/game/IMPL.md](./internal/game/IMPL.md)** — Deep dive into code organization, data flow, threading model, difficulty progression, HUD display, audio system, and world layout.
+- **[internal/game/DIAGRAMS.md](./internal/game/DIAGRAMS.md)** — Nine Mermaid control-flow diagrams covering the game loop, physics pipeline, helicopter state machine, input routing, target lock acquisition, collision dispatch, projectile lifecycle, and wave progression.
