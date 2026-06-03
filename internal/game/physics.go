@@ -60,28 +60,7 @@ func (g *Game) updateHelicopter() {
 			g.heli.TakeoffCooldown = 25
 
 			// Re-center camera over carrier pad
-			g.camX = padX - g.width/2
-			g.camY = padY - (g.height-4)/2
-			if g.camX < 0 {
-				g.camX = 0
-			}
-			if g.worldWidth > g.width {
-				if g.camX > g.worldWidth-g.width {
-					g.camX = g.worldWidth - g.width
-				}
-			} else {
-				g.camX = 0
-			}
-			if g.camY < 0 {
-				g.camY = 0
-			}
-			if g.worldHeight > g.height-4 {
-				if g.camY > g.worldHeight-(g.height-4) {
-					g.camY = g.worldHeight - (g.height - 4)
-				}
-			} else {
-				g.camY = 0
-			}
+			g.centerCameraOnPad(padX, padY)
 		}
 		return
 	}
@@ -114,57 +93,6 @@ func (g *Game) updateHelicopter() {
 		if g.heli.MissileAmmo < 4 {
 			g.heli.MissileAmmo = 4
 			slog.Info("Missiles fully rearmed", "ammo", g.heli.MissileAmmo)
-		}
-
-		// Slowly replenish carrier defense drones on landing pad (rebuild 1 drone every 100 ticks)
-		if g.Ticks%100 == 0 {
-			carrierDronesCount := 0
-			for d := 0; d < len(g.drones); d++ {
-				if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
-					carrierDronesCount++
-				}
-			}
-			if carrierDronesCount < 3 {
-				angle := 0.0
-				if carrierDronesCount == 1 {
-					for d := 0; d < len(g.drones); d++ {
-						if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
-							angle = g.drones[d].Angle + 2.0*math.Pi/3.0
-							break
-						}
-					}
-				} else if carrierDronesCount == 2 {
-					var angles []float64
-					for d := 0; d < len(g.drones); d++ {
-						if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
-							angles = append(angles, g.drones[d].Angle)
-						}
-					}
-					if len(angles) == 2 {
-						mid := (angles[0] + angles[1]) / 2.0
-						if math.Abs(angles[0]-angles[1]) > math.Pi {
-							angle = mid
-						} else {
-							angle = mid + math.Pi
-						}
-					}
-				}
-				cx := float64(g.carrier.X + g.carrier.Width/2)
-				cy := float64(g.carrier.Y + g.carrier.Height/2)
-
-				spawned := false
-				for d := 0; d < len(g.drones); d++ {
-					if !g.drones[d].Active {
-						g.drones[d] = Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1}
-						spawned = true
-						break
-					}
-				}
-				if !spawned {
-					g.drones = append(g.drones, Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1})
-				}
-				slog.Info("Carrier repaired/spawned defensive carrier drone!")
-			}
 		}
 
 		g.heli.VX = 0
@@ -301,6 +229,12 @@ func (g *Game) updateCamera() {
 	}
 
 	// 3. Clamp camera to world boundaries
+	g.clampCamera()
+}
+
+// clampCamera constrains the camera offset to the world bounds, accounting for
+// the 4-row HUD reserved at the bottom of the screen.
+func (g *Game) clampCamera() {
 	if g.camX < 0 {
 		g.camX = 0
 	}
@@ -324,6 +258,14 @@ func (g *Game) updateCamera() {
 	}
 }
 
+// centerCameraOnPad centers the camera over the carrier landing pad and clamps
+// it to the world bounds.
+func (g *Game) centerCameraOnPad(padX, padY int) {
+	g.camX = padX - g.width/2
+	g.camY = padY - (g.height-4)/2
+	g.clampCamera()
+}
+
 func (g *Game) updateWeaponCooldowns() {
 	if g.heli.FireCooldown > 0 {
 		g.heli.FireCooldown--
@@ -333,7 +275,67 @@ func (g *Game) updateWeaponCooldowns() {
 	}
 }
 
+// replenishCarrierDrones slowly rebuilds the carrier's defensive drone screen
+// (one drone every 100 ticks) while the helicopter is parked on the pad.
+func (g *Game) replenishCarrierDrones() {
+	if !g.heli.Landed || g.Ticks%100 != 0 {
+		return
+	}
+
+	carrierDronesCount := 0
+	for d := 0; d < len(g.drones); d++ {
+		if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
+			carrierDronesCount++
+		}
+	}
+	if carrierDronesCount >= 3 {
+		return
+	}
+
+	angle := 0.0
+	if carrierDronesCount == 1 {
+		for d := 0; d < len(g.drones); d++ {
+			if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
+				angle = g.drones[d].Angle + 2.0*math.Pi/3.0
+				break
+			}
+		}
+	} else if carrierDronesCount == 2 {
+		var angles []float64
+		for d := 0; d < len(g.drones); d++ {
+			if g.drones[d].Active && g.drones[d].FactoryIdx == -1 {
+				angles = append(angles, g.drones[d].Angle)
+			}
+		}
+		if len(angles) == 2 {
+			mid := (angles[0] + angles[1]) / 2.0
+			if math.Abs(angles[0]-angles[1]) > math.Pi {
+				angle = mid
+			} else {
+				angle = mid + math.Pi
+			}
+		}
+	}
+	cx := float64(g.carrier.X + g.carrier.Width/2)
+	cy := float64(g.carrier.Y + g.carrier.Height/2)
+
+	spawned := false
+	for d := 0; d < len(g.drones); d++ {
+		if !g.drones[d].Active {
+			g.drones[d] = Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1}
+			spawned = true
+			break
+		}
+	}
+	if !spawned {
+		g.drones = append(g.drones, Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1})
+	}
+	slog.Info("Carrier repaired/spawned defensive carrier drone!")
+}
+
 func (g *Game) updateCarrierDefense() {
+	g.replenishCarrierDrones()
+
 	if g.carrier.Health <= 0 {
 		return
 	}
@@ -451,31 +453,8 @@ func (g *Game) checkWaveCompletion() {
 		g.boats[i].MissileCooldown = 600 + rand.Intn(400)
 	}
 
-	for fIdx := range g.factories {
-		fact := &g.factories[fIdx]
-		fact.Active = true
-		fact.Health = fact.MaxHealth
-		fact.SinkingTimer = 0
-		fact.FireCooldown = 100 + rand.Intn(100)
-		fact.DronesRemaining = 8
-	}
-
-	for d := range g.drones {
-		g.drones[d].Active = true
-		if d%2 == 0 {
-			g.drones[d].Angle = 0.0
-		} else {
-			g.drones[d].Angle = 3.14159
-		}
-		if g.drones[d].FactoryIdx >= 0 {
-			fact := &g.factories[g.drones[d].FactoryIdx]
-			g.drones[d].X = fact.X
-			g.drones[d].Y = fact.Y
-		} else if g.drones[d].FactoryIdx == -1 {
-			g.drones[d].X = float64(g.carrier.X + g.carrier.Width/2)
-			g.drones[d].Y = float64(g.carrier.Y + g.carrier.Height/2)
-		}
-	}
+	g.resetFactories()
+	g.resetDrones()
 
 	for tIdx := range g.tanks {
 		tank := &g.tanks[tIdx]
@@ -508,9 +487,51 @@ func (g *Game) checkWaveCompletion() {
 		}
 	}
 
+	g.resetStaticAAs(g.Wave >= 3)
+}
+
+// resetFactories restores every factory to full health with a fresh fire
+// cooldown and replenished drone reserves. Shared by wave and round resets.
+func (g *Game) resetFactories() {
+	for fIdx := range g.factories {
+		fact := &g.factories[fIdx]
+		fact.Active = true
+		fact.Health = fact.MaxHealth
+		fact.SinkingTimer = 0
+		fact.FireCooldown = 100 + rand.Intn(100)
+		fact.DronesRemaining = 8
+	}
+}
+
+// resetDrones reactivates all drones and snaps them back to their orbit anchor
+// (their owning factory, or the carrier for FactoryIdx == -1). Shared by wave
+// and round resets; assumes factories have already been reset.
+func (g *Game) resetDrones() {
+	for d := range g.drones {
+		g.drones[d].Active = true
+		if d%2 == 0 {
+			g.drones[d].Angle = 0.0
+		} else {
+			g.drones[d].Angle = 3.14159
+		}
+		if g.drones[d].FactoryIdx >= 0 {
+			fact := &g.factories[g.drones[d].FactoryIdx]
+			g.drones[d].X = fact.X
+			g.drones[d].Y = fact.Y
+		} else if g.drones[d].FactoryIdx == -1 {
+			g.drones[d].X = float64(g.carrier.X + g.carrier.Width/2)
+			g.drones[d].Y = float64(g.carrier.Y + g.carrier.Height/2)
+		}
+	}
+}
+
+// resetStaticAAs restores every static AA gun to full health with a fresh fire
+// cooldown. The active flag is caller-controlled: wave resets gate it behind
+// Wave >= 3, while round resets reactivate unconditionally.
+func (g *Game) resetStaticAAs(active bool) {
 	for saIdx := range g.staticAAs {
 		sa := &g.staticAAs[saIdx]
-		sa.Active = g.Wave >= 3
+		sa.Active = active
 		sa.Health = sa.MaxHealth
 		sa.SinkingTimer = 0
 		sa.FireCooldown = 45 + rand.Intn(100)
@@ -536,28 +557,7 @@ func (g *Game) resetRound() {
 	g.heli.TakeoffCooldown = 25
 
 	// Reset camera to center around the carrier pad
-	g.camX = padX - g.width/2
-	g.camY = padY - (g.height-4)/2
-	if g.camX < 0 {
-		g.camX = 0
-	}
-	if g.worldWidth > g.width {
-		if g.camX > g.worldWidth-g.width {
-			g.camX = g.worldWidth - g.width
-		}
-	} else {
-		g.camX = 0
-	}
-	if g.camY < 0 {
-		g.camY = 0
-	}
-	if g.worldHeight > g.height-4 {
-		if g.camY > g.worldHeight-(g.height-4) {
-			g.camY = g.worldHeight - (g.height - 4)
-		}
-	} else {
-		g.camY = 0
-	}
+	g.centerCameraOnPad(padX, padY)
 
 	g.bullets = g.bullets[:0]
 	g.missiles = g.missiles[:0]
@@ -577,31 +577,8 @@ func (g *Game) resetRound() {
 		boat.VX = initial.VX
 	}
 
-	for fIdx := range g.factories {
-		fact := &g.factories[fIdx]
-		fact.Active = true
-		fact.Health = fact.MaxHealth
-		fact.SinkingTimer = 0
-		fact.FireCooldown = 100 + rand.Intn(100)
-		fact.DronesRemaining = 8
-	}
-
-	for d := range g.drones {
-		g.drones[d].Active = true
-		if d%2 == 0 {
-			g.drones[d].Angle = 0.0
-		} else {
-			g.drones[d].Angle = 3.14159
-		}
-		if g.drones[d].FactoryIdx >= 0 {
-			fact := &g.factories[g.drones[d].FactoryIdx]
-			g.drones[d].X = fact.X
-			g.drones[d].Y = fact.Y
-		} else if g.drones[d].FactoryIdx == -1 {
-			g.drones[d].X = float64(g.carrier.X + g.carrier.Width/2)
-			g.drones[d].Y = float64(g.carrier.Y + g.carrier.Height/2)
-		}
-	}
+	g.resetFactories()
+	g.resetDrones()
 
 	for tIdx := range g.tanks {
 		tank := &g.tanks[tIdx]
@@ -636,13 +613,7 @@ func (g *Game) resetRound() {
 		}
 	}
 
-	for saIdx := range g.staticAAs {
-		sa := &g.staticAAs[saIdx]
-		sa.Active = true
-		sa.Health = sa.MaxHealth
-		sa.SinkingTimer = 0
-		sa.FireCooldown = 45 + rand.Intn(100)
-	}
+	g.resetStaticAAs(true)
 }
 
 func (g *Game) initStaticAAs() {

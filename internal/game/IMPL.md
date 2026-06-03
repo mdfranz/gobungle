@@ -1,5 +1,7 @@
 # Gobungle Game Implementation
 
+> See [DIAGRAMS.md](./DIAGRAMS.md) for Mermaid control-flow diagrams of the loop, physics pipeline, input routing, collision dispatch, projectile lifecycle, and wave progression.
+
 ## Code Organization
 
 ### Architecture Overview
@@ -30,39 +32,49 @@ The game is organized as a single-threaded event loop (25 FPS) with a game state
 - `gameLoop()`: Runs physics updates and rendering at 25 FPS with locked mutex
 - `inputLoop()`: Handles keyboard events (arrow keys, space, q, etc.) and routes to game state
 
-**input.go** — Player Input & Helicopter Control
-- `updateHelicopter()`: Processes keyboard input for helicopter movement (8 directions), fire (space), and missile launch (M key)
-- Directional input adjusts helicopter velocity with momentum
-- Landing pad collision detection handles automatic refueling/rearming
-- Respawn logic handles explosion sequence and re-materialization on carrier pad
+**input.go** — Player Input & Target Locking
+- `handleKeyPress()`: Processes keyboard input for helicopter steering (8 directions via arrow keys / A,D), thrust (↑/W), brake (↓/S), cannon fire (space), guided-missile launch (F/M), and manual landing (L)
+- Directional input adjusts helicopter velocity with momentum; input is gated by helicopter state (destroyed/respawning → ignored, landed → takeoff only, airborne → full control)
+- Missile launch requires a locked target and caps active player missiles in flight at 2
+- `getLockedTarget()`: Returns the nearest active target (boat/factory/tank/static AA) inside the ±45° forward aperture (`dot ≥ 0.707`) and within `MaxLockOnRange`; called once per tick at the end of `updatePhysics`
 
-**physics.go** — World State Updates
-- `updatePhysics()`: Master update function called once per frame, orchestrates all entity updates
-- `updateHelicopter()`: Helicopter movement, fuel consumption, takeoff delay
-- `updateBoats()`: Boat movement along coastline with `PatrolMinX` boundary, gradual patrol expansion (0.02/tick), missile firing at carrier
-- `updateLandForces()`: Orchestrates factory, tank, static AA, and drone updates
-- `updateProjectiles()`: Moves bullets and missiles, handles out-of-bounds culling
-- `updateMissileGuidance()`: Guided missile tracking toward target
-- `updateCarrierDefense()`: Carrier fires back at nearby boats
-- `updateCollisions()`: Collision detection for bullets, missiles, explosions (11 different collision types)
-- `checkWaveCompletion()`: Detects all-assets-destroyed, increments wave counter, triggers **explosion sound**, resets boat `PatrolMinX` to `coastlineX - 18`, resets all cooldowns and speeds
-- `getLockedTarget()`: Determines current locked target (boat/factory/tank/static AA) based on helicopter position and direction
+**physics.go** — Per-Tick Orchestration & World State
+- `updatePhysics()`: Master update function called once per tick, orchestrates all entity updates in order (see Data Flow)
+- `updateHelicopter()`: Helicopter movement, fuel consumption, takeoff delay, landing detection, respawn sequence, on-pad refuel/repair/rearm, and carrier-drone replenishment
+- `updateCamera()`: Dead-zone scroll camera that follows the helicopter and clamps to world bounds
+- `updateWeaponCooldowns()`: Decrements helicopter fire/missile cooldowns
+- `updateCarrierDefense()`: Carrier fires defensive guided missiles at nearby boats
+- `updateExplosions()`: Ages and culls explosion particles
+- `checkWaveCompletion()`: Detects all-assets-destroyed, increments wave counter, triggers **explosion sound**, resets boat `PatrolMinX` to `coastlineX - 18`, resets all cooldowns and speeds (1.25×)
+- `resetRound()`: Full round reset after carrier destruction — restores carrier/heli, clears projectiles, respawns all assets at base difficulty
+- `initStaticAAs()`: Places 6 static AA guns along the coastline at game start
 
 **enemies.go** — Enemy AI & Behavior
 - `updateBoats()`: 
   - Handles boat movement with velocity-based patrol
   - Checks boundaries against `PatrolMinX` (left) and coastline (right), reverses velocity on bounce
   - **Patrol expansion**: Each tick, decrements `PatrolMinX -= 0.02` until it reaches 6
-  - AA fire: projectile launch toward helicopter within range with cooldown throttling
+  - AA fire: projectile launch toward helicopter within `BoatAARange` with cooldown throttling
   - Guided missile launch at carrier with cooldown reset to 600-1000 ticks
+- `updateLandForces()`: Orchestrates `updateFactories`, `updateDroneOrbits`, `updateTanks`, and `updateStaticAAs`
 - `updateFactories()`:
   - Factory AA fire similar to boats
   - **Wave 4+**: Ground-launched missiles at carrier with periodic launch (800 tick interval, staggered per factory)
-  - Drone management and sinking/explosion sequences
+  - Drone reserve management and sinking/explosion sequences
+- `updateDroneOrbits()`: Advances orbiting drone positions around factories (radius 8) and the carrier (radius 12)
 - `updateTanks()`: Patrol within assigned bounds, AA fire toward helicopter
 - `updateStaticAAs()`: Fire from fixed coastline positions toward helicopter
 
+**projectiles.go** — Projectile Movement, Spawning & Homing
+- `updateProjectiles()`: Calls `updateBullets()` and `updateMissiles()`
+- `updateBullets()` / `updateMissiles()`: Advance position, cull on world-edge exit or max-range
+- `homeMissileToCarrier()`: Enemy/boat missile homing toward the carrier (accelerates toward 1.1, gentle 0.92/0.08 steering lerp)
+- `homeMissileToTarget()`: Player missile homing toward the nearest active enemy of any class (accelerates toward 5.0, 0.82/0.18 steering lerp); also rolls the boat CIWS countermeasure once per missile within `BoatDetectionRange`
+- `tickSinking()`: Shared sinking-animation helper used by boats, factories, tanks, and static AAs
+- `appendBullet()` / `appendMissile()` + `spawn*` helpers: Pooled-slot allocator that reuses inactive slots before growing the slice
+
 **collision.go** — Collision Detection & Damage
+- `checkCollisions()`: Runs five sub-checks in order — drone interceptions, bullet collisions, missile collisions, player-bullets-vs-enemy-missiles, enemy-bullets-vs-player-missiles
 - 11 distinct collision types handled:
   - Helicopter vs bullets: armor damage
   - Helicopter vs missiles: armor damage + respawn sequence
