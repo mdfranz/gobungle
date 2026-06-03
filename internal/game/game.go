@@ -79,14 +79,14 @@ func New(screen tcell.Screen) *Game {
 	}
 
 	boats := []Boat{
-		{X: 15, Y: float64(worldHeight - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 200},
-		{X: 20, Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 400},
-		{X: 25, Y: float64(worldHeight - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 600},
+		{X: 15, Y: float64(worldHeight - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 1500},
+		{X: 20, Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 2000},
+		{X: 25, Y: float64(worldHeight - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 2500},
 	}
 
 	factories := []Factory{
-		{X: float64(worldWidth - 15), Y: float64(worldHeight / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 100, DronesRemaining: 8},
-		{X: float64(worldWidth - 7), Y: float64(worldHeight / 2), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 150, DronesRemaining: 8},
+		{X: float64(worldWidth * 2 / 3), Y: float64(worldHeight / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 100, DronesRemaining: 8},
+		{X: float64(worldWidth - 35), Y: float64(worldHeight / 2), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 150, DronesRemaining: 8},
 		{X: float64(worldWidth - 15), Y: float64(worldHeight * 7 / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 200, DronesRemaining: 8},
 	}
 
@@ -151,6 +151,7 @@ func New(screen tcell.Screen) *Game {
 		by := int(math.Round(g.boats[i].Y))
 		thresh := g.getCoastlineThreshold(by)
 		g.boats[i].X = thresh - 8.0
+		g.boats[i].PatrolMinX = g.boats[i].X - 10.0
 	}
 
 	copy(g.initialBoats, g.boats)

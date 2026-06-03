@@ -437,6 +437,7 @@ func (g *Game) checkWaveCompletion() {
 	}
 
 	g.Wave++
+	PlaySound("explosion")
 	slog.Info("All enemy assets destroyed! Advancing to next wave", "wave", g.Wave, "speed_multiplier", 1.25)
 
 	for i := range g.boats {
@@ -445,6 +446,9 @@ func (g *Game) checkWaveCompletion() {
 		g.boats[i].SinkingTimer = 0
 		g.boats[i].X = g.initialBoats[i].X
 		g.boats[i].Y = g.initialBoats[i].Y
+		by := int(math.Round(g.boats[i].Y))
+		thresh := g.getCoastlineThreshold(by)
+		g.boats[i].PatrolMinX = thresh - 18.0
 		newSpeed := g.boats[i].VX * 1.25
 		if math.Abs(newSpeed) > 2.0 {
 			if newSpeed < 0 {
@@ -455,7 +459,7 @@ func (g *Game) checkWaveCompletion() {
 		} else {
 			g.boats[i].VX = newSpeed
 		}
-		g.boats[i].MissileCooldown = 300 + rand.Intn(300)
+		g.boats[i].MissileCooldown = 600 + rand.Intn(400)
 	}
 
 	for fIdx := range g.factories {

@@ -112,6 +112,7 @@ type Boat struct {
 	FireCooldown    int
 	MissileCooldown int
 	SinkingTimer    int
+	PatrolMinX      float64
 }
 
 // Visual explosion particle effect

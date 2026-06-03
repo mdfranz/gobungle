@@ -56,11 +56,11 @@ func (g *Game) updateBoats() {
 		if maxWaterX > float64(g.worldWidth-7) {
 			maxWaterX = float64(g.worldWidth - 7)
 		}
-		if boat.X < 6 || boat.X > maxWaterX {
+		if boat.X < boat.PatrolMinX || boat.X > maxWaterX {
 			boat.VX = -boat.VX
 			boat.X += boat.VX * speedMult
-			if boat.X < 6 {
-				boat.X = 6
+			if boat.X < boat.PatrolMinX {
+				boat.X = boat.PatrolMinX
 			} else if boat.X > maxWaterX {
 				boat.X = maxWaterX
 			}
@@ -68,6 +68,14 @@ func (g *Game) updateBoats() {
 
 		if boat.SinkingTimer > 0 {
 			continue
+		}
+
+		// Gradually expand patrol range from coast toward carrier
+		if boat.PatrolMinX > 6 {
+			boat.PatrolMinX -= 0.02
+			if boat.PatrolMinX < 6 {
+				boat.PatrolMinX = 6
+			}
 		}
 
 		// AA fire against the helicopter

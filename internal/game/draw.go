@@ -801,12 +801,31 @@ func (g *Game) drawHUD() {
 
 	offset += len(padLabel) + len(alignStr)
 
-	scoreLabel := "   |   BOATS SUNK: "
-	g.drawString(offset, hudY+2, scoreLabel, hudStyle)
-	scoreValStr := fmt.Sprintf("%d", g.boatsSunk)
-	g.drawString(offset+len(scoreLabel), hudY+2, scoreValStr, hudStyle.Foreground(tcell.ColorYellow))
+	boatsRemaining := 0
+	for _, b := range g.boats {
+		if b.Active {
+			boatsRemaining++
+		}
+	}
+	boatsLabel := "   |   BOATS: "
+	g.drawString(offset, hudY+2, boatsLabel, hudStyle)
+	boatsValStr := fmt.Sprintf("%d", boatsRemaining)
+	g.drawString(offset+len(boatsLabel), hudY+2, boatsValStr, hudStyle.Foreground(tcell.ColorLightCyan))
 
-	offset += len(scoreLabel) + len(scoreValStr)
+	offset += len(boatsLabel) + len(boatsValStr)
+
+	factoriesRemaining := 0
+	for _, f := range g.factories {
+		if f.Active {
+			factoriesRemaining++
+		}
+	}
+	factoriesLabel := "   |   FACTORIES: "
+	g.drawString(offset, hudY+2, factoriesLabel, hudStyle)
+	factoriesValStr := fmt.Sprintf("%d", factoriesRemaining)
+	g.drawString(offset+len(factoriesLabel), hudY+2, factoriesValStr, hudStyle.Foreground(tcell.ColorOrange))
+
+	offset += len(factoriesLabel) + len(factoriesValStr)
 
 	armorColor := tcell.ColorGreen
 	if g.heli.Armor < 25.0 {
