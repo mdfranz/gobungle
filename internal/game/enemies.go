@@ -16,6 +16,7 @@ func (g *Game) updateBoats() {
 
 		if boat.SinkingTimer > 0 {
 			if g.tickSinking(&boat.SinkingTimer, boat.X, boat.Y, 5, 1, 5, 1, 0) {
+				g.applyBlastDamage(boat.X, boat.Y, 7.0, 20.0)
 				boat.Active = false
 				g.boatsSunk++
 				slog.Info("Doomed boat has fully sunk", "boat_idx", i, "total_sunk", g.boatsSunk)
@@ -108,6 +109,7 @@ func (g *Game) updateFactories() {
 
 		if fact.SinkingTimer > 0 {
 			if g.tickSinking(&fact.SinkingTimer, fact.X, fact.Y, 3, 1, 6, 2, 4) {
+				g.applyBlastDamage(fact.X, fact.Y, 9.0, 25.0)
 				fact.Active = false
 				slog.Info("Enemy military Factory has been completely destroyed!", "idx", fIdx)
 				for d := 0; d < len(g.drones); d++ {
@@ -229,6 +231,7 @@ func (g *Game) updateTanks() {
 
 		if tank.SinkingTimer > 0 {
 			if g.tickSinking(&tank.SinkingTimer, tank.X, tank.Y, 1, 1, 2, 1, 3) {
+				g.applyBlastDamage(tank.X, tank.Y, 4.0, 15.0)
 				tank.Active = false
 				slog.Info("Patrolling Tank has fully blown up!", "tank_idx", tIdx)
 				continue
@@ -284,6 +287,7 @@ func (g *Game) updateStaticAAs() {
 
 		if sa.SinkingTimer > 0 {
 			if g.tickSinking(&sa.SinkingTimer, sa.X, sa.Y, 1, 1, 2, 1, 3) {
+				g.applyBlastDamage(sa.X, sa.Y, 4.0, 15.0)
 				sa.Active = false
 				slog.Info("Static AA has fully blown up!", "idx", saIdx)
 				continue

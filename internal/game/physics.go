@@ -204,7 +204,7 @@ func (g *Game) updateCamera() {
 
 	// Margin values (20% of screen size)
 	marginW := int(float64(g.width) * 0.20)
-	marginH := int(float64(g.height-4) * 0.20)
+	marginH := int(float64(g.height-6) * 0.20)
 
 	// Keep margins reasonable
 	if marginW < 5 {
@@ -224,8 +224,8 @@ func (g *Game) updateCamera() {
 	// 2. Check vertical boundaries (camera dead zone)
 	if hy-g.camY < marginH {
 		g.camY = hy - marginH
-	} else if hy-g.camY > (g.height-4)-marginH {
-		g.camY = hy - ((g.height - 4) - marginH)
+	} else if hy-g.camY > (g.height-6)-marginH {
+		g.camY = hy - ((g.height - 6) - marginH)
 	}
 
 	// 3. Clamp camera to world boundaries
@@ -249,9 +249,9 @@ func (g *Game) clampCamera() {
 	if g.camY < 0 {
 		g.camY = 0
 	}
-	if g.worldHeight > g.height-4 {
-		if g.camY > g.worldHeight-(g.height-4) {
-			g.camY = g.worldHeight - (g.height - 4)
+	if g.worldHeight > g.height-6 {
+		if g.camY > g.worldHeight-(g.height-6) {
+			g.camY = g.worldHeight - (g.height - 6)
 		}
 	} else {
 		g.camY = 0
@@ -262,7 +262,7 @@ func (g *Game) clampCamera() {
 // it to the world bounds.
 func (g *Game) centerCameraOnPad(padX, padY int) {
 	g.camX = padX - g.width/2
-	g.camY = padY - (g.height-4)/2
+	g.camY = padY - (g.height-6)/2
 	g.clampCamera()
 }
 
@@ -272,6 +272,12 @@ func (g *Game) updateWeaponCooldowns() {
 	}
 	if g.heli.MissileCooldown > 0 {
 		g.heli.MissileCooldown--
+	}
+	if g.heli.CannonHeat > 0 {
+		g.heli.CannonHeat--
+	}
+	if g.heli.CannonJammed > 0 {
+		g.heli.CannonJammed--
 	}
 }
 
@@ -642,8 +648,8 @@ func (g *Game) initStaticAAs() {
 		g.staticAAs[i] = StaticAA{
 			X:            x,
 			Y:            float64(y),
-			Health:       5,
-			MaxHealth:    5,
+			Health:       4,
+			MaxHealth:    4,
 			Active:       g.Wave >= 3,
 			FireCooldown: 30 + rand.Intn(100),
 		}

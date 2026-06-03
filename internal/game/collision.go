@@ -6,6 +6,47 @@ import (
 	"math/rand"
 )
 
+// applyBlastDamage deals armor damage to the helicopter if it is airborne and within
+// blastRadius world-cells of (x, y). Used for secondary explosions when targets finish sinking.
+func (g *Game) applyBlastDamage(x, y, blastRadius, damage float64) {
+	if g.heli.Landed || g.heli.Armor <= 0 || g.heli.RespawnTimer > 0 {
+		return
+	}
+	dx := g.heli.X - x
+	dy := g.heli.Y - y
+	if math.Sqrt(dx*dx+dy*dy) > blastRadius {
+		return
+	}
+	g.heli.Armor -= damage
+	if g.heli.Armor < 0 {
+		g.heli.Armor = 0
+	}
+	slog.Warn("Helicopter caught in secondary explosion blast!", "blast_origin_x", x, "blast_origin_y", y, "damage", damage, "armor_remaining", g.heli.Armor)
+
+	if g.heli.Armor <= 0 {
+		slog.Warn("Helicopter destroyed by secondary explosion!", "x", g.heli.X, "y", g.heli.Y)
+		hx := int(math.Round(g.heli.X))
+		hy := int(math.Round(g.heli.Y))
+		for ddx := -2; ddx <= 2; ddx++ {
+			for ddy := -1; ddy <= 1; ddy++ {
+				g.explosions = append(g.explosions, Explosion{X: hx + ddx, Y: hy + ddy, Age: 0})
+			}
+		}
+		hasIncoming := false
+		for j := 0; j < len(g.missiles); j++ {
+			if g.missiles[j].Active && g.missiles[j].IsEnemy {
+				hasIncoming = true
+				break
+			}
+		}
+		if hasIncoming {
+			g.heli.RespawnTimer = 65
+		} else {
+			g.heli.RespawnTimer = 40
+		}
+	}
+}
+
 // checkCollisions handles all projectile-vs-entity and drone-vs-missile collision detection.
 func (g *Game) checkCollisions() {
 	g.checkDroneMissileInterceptions()
@@ -80,7 +121,7 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 	if g.heli.Landed || g.heli.Armor <= 0 {
 		return
 	}
-	if math.Abs(bullet.X-g.heli.X) < 2.5 && math.Abs(bullet.Y-g.heli.Y) < 1.5 {
+	if math.Abs(bullet.X-g.heli.X) < 3.5 && math.Abs(bullet.Y-g.heli.Y) < 2.5 {
 		bullet.Active = false
 		g.heli.Armor -= 15.0
 		slog.Info("Enemy projectile hit Player", "damage", 15.0, "remaining_armor", g.heli.Armor)
@@ -93,8 +134,8 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 
 			hx := int(math.Round(g.heli.X))
 			hy := int(math.Round(g.heli.Y))
-			for ddx := -2; ddx <= 2; ddx++ {
-				for ddy := -1; ddy <= 1; ddy++ {
+			for ddx := -3; ddx <= 3; ddx++ {
+				for ddy := -2; ddy <= 2; ddy++ {
 					g.explosions = append(g.explosions, Explosion{X: hx + ddx, Y: hy + ddy, Age: 0})
 				}
 			}
@@ -307,11 +348,15 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 		if fact.Active && fact.SinkingTimer == 0 {
 			if math.Abs(m.X-fact.X) < 8.5 && math.Abs(m.Y-fact.Y) < 2.5 {
 				m.Active = false
-				fact.SinkingTimer = 45
-				fact.Health = 0
-				slog.Info("Player guided missile hit Factory (CRITICAL HIT!)", "idx", fIdx)
+				fact.Health -= 10
+				slog.Info("Player guided missile hit Factory", "idx", fIdx, "health", fact.Health, "max_health", fact.MaxHealth)
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
 				PlaySound("explosion")
+				if fact.Health <= 0 {
+					fact.Health = 0
+					fact.SinkingTimer = 45
+					slog.Info("Factory destroyed by guided missile!", "idx", fIdx)
+				}
 				return
 			}
 		}

@@ -102,7 +102,7 @@ func (g *Game) getCameraOffset() (int, int) {
 func (g *Game) draw() {
 	camX, camY := g.getCameraOffset()
 	// 1. Draw Ocean Background & Aircraft Carrier
-	for sy := 0; sy < g.height-4; sy++ {
+	for sy := 0; sy < g.height-6; sy++ {
 		for sx := 0; sx < g.width; sx++ {
 			vx := sx + camX
 			vy := sy + camY
@@ -270,7 +270,7 @@ func (g *Game) draw() {
 				ssmY := smY - camY
 
 				// Ensure within map boundaries and above HUD
-				if ssmX < 0 || ssmX >= g.width || ssmY < 0 || ssmY >= g.height-4 {
+				if ssmX < 0 || ssmX >= g.width || ssmY < 0 || ssmY >= g.height-6 {
 					continue
 				}
 
@@ -422,7 +422,7 @@ func (g *Game) draw() {
 
 		sbx := bx - camX
 		sby := by - camY
-		if sbx >= 0 && sbx < g.width && sby >= 0 && sby < g.height-4 {
+		if sbx >= 0 && sbx < g.width && sby >= 0 && sby < g.height-6 {
 			bgStyle := g.getMapStyle(bx, by)
 			color := tcell.ColorYellow
 			if bullet.IsEnemy {
@@ -444,7 +444,7 @@ func (g *Game) draw() {
 		smx := mx - camX
 		smy := my - camY
 
-		if smx >= 0 && smx < g.width && smy >= 0 && smy < g.height-4 {
+		if smx >= 0 && smx < g.width && smy >= 0 && smy < g.height-6 {
 			bgStyle := g.getMapStyle(mx, my)
 
 			// Select caret/missile arrow based on the dominant direction of its velocity
@@ -482,7 +482,7 @@ func (g *Game) draw() {
 		sbx := bx - camX
 		sby := by - camY
 
-		if sbx >= 0 && sbx < g.width && sby >= 0 && sby < g.height-4 {
+		if sbx >= 0 && sbx < g.width && sby >= 0 && sby < g.height-6 {
 			bgStyle := g.getMapStyle(bx, by)
 			var r rune
 			var fg tcell.Color
@@ -508,27 +508,29 @@ func (g *Game) draw() {
 	hy := int(math.Round(h.Y))
 	rotorChar := rotorFrames[h.RotorState]
 
-	for r := 0; r < 3; r++ {
-		for c := 0; c < 5; c++ {
+	for r := 0; r < 5; r++ {
+		for c := 0; c < 7; c++ {
 			char := sprites[h.Dir][r][c]
 			if char == ' ' {
 				continue // Transparent sprite cell
 			}
 
-			mx := hx + c - 2
-			my := hy + r - 1
+			mx := hx + c - 3
+			my := hy + r - 2
 
 			smx := mx - camX
 			smy := my - camY
 
 			// Check screen boundary limits
-			if smx < 0 || smx >= g.width || smy < 0 || smy >= g.height-4 {
+			if smx < 0 || smx >= g.width || smy < 0 || smy >= g.height-6 {
 				continue
 			}
 
-			// Center column of the 5x3 helicopter is the spinning main rotor
-			if r == 1 && c == 2 {
+			// Dynamic multi-rotor animation: replace any '*' with current rotor frame
+			isRotor := false
+			if char == '*' {
 				char = rotorChar
+				isRotor = true
 			}
 
 			// Look up original terrain background style to prevent rectangular background boxes
@@ -536,21 +538,21 @@ func (g *Game) draw() {
 
 			// Pick foreground colors based on specific characters of the helicopter sprite
 			var fg tcell.Color
-			switch char {
-			case '▲', '▼', '►', '◄':
-				fg = tcell.ColorWhite // Front cabin nose (Stealth white)
-			case '|', '/', '\\', '╪':
-				if r == 1 && c == 2 {
-					fg = tcell.ColorWhite // Rotor blades
-				} else {
-					fg = tcell.ColorPaleTurquoise // Tail stabilizer rotor / wings
+			if isRotor {
+				fg = tcell.ColorWhite // Spinning rotor blades
+			} else {
+				switch char {
+				case '▲', '▼', '►', '◄':
+					fg = tcell.ColorWhite // Front cabin nose (Stealth white)
+				case '|', '/', '\\', '│', '╪':
+					fg = tcell.ColorPaleTurquoise // Tail stabilizer components / wing angles
+				case '-', '_', '¯', '[', ']', '=', '═', '─', '║':
+					fg = tcell.ColorSilver // Skids, support wings, tail boom
+				case '█', '▓', '▒', '╟', '╢':
+					fg = tcell.ColorSlateGray // Main armored fuselage (Stealth Slate Gray)
+				default:
+					fg = tcell.ColorWhite
 				}
-			case '-', '_', '¯', '[', ']', '=', '║':
-				fg = tcell.ColorSilver // Skids, support wings, tail boom
-			case '█', '▓', '▒', '╟', '╢':
-				fg = tcell.ColorSlateGray // Main armored fuselage (Stealth Slate Gray)
-			default:
-				fg = tcell.ColorWhite
 			}
 
 			style := bgStyle.Foreground(fg)
@@ -578,7 +580,7 @@ func (g *Game) drawGameOver() {
 	boxW := 46
 	boxH := 9
 	startX := (g.width - boxW) / 2
-	startY := (g.height - 4 - boxH) / 2
+	startY := (g.height - 6 - boxH) / 2
 	if startY < 0 {
 		startY = 0
 	}
@@ -627,7 +629,7 @@ func (g *Game) drawQuitConfirmation() {
 	boxW := 42
 	boxH := 7
 	startX := (g.width - boxW) / 2
-	startY := (g.height - 4 - boxH) / 2
+	startY := (g.height - 6 - boxH) / 2
 	if startY < 0 {
 		startY = 0
 	}
@@ -670,7 +672,7 @@ func (g *Game) drawQuitConfirmation() {
 
 // drawHUD prints diagnostic status metrics and cockpit gauges
 func (g *Game) drawHUD() {
-	hudY := g.height - 4
+	hudY := g.height - 6
 	hudStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite)
 	borderStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorDarkCyan)
 
@@ -699,8 +701,8 @@ func (g *Game) drawHUD() {
 		}
 	}
 
-	// Clear background of lines H-3, H-2, H-1
-	for dy := 1; dy <= 3; dy++ {
+	// Clear background of lines H-3 through H-1 plus the 2 new radar rows
+	for dy := 1; dy <= 5; dy++ {
 		for x := 0; x < g.width; x++ {
 			g.screen.SetContent(x, hudY+dy, ' ', nil, hudStyle)
 		}
@@ -757,7 +759,7 @@ func (g *Game) drawHUD() {
 
 	// Display row H-3: Instruments
 	instrumentText := fmt.Sprintf(
-		"GPS: (%d, %d)   |   SPEED: %3d KTS   |   HEADING: %3d° (%-2s)   |   ALTITUDE: %3d FT   |   FUEL: ",
+		"GPS:(%d,%d) | SPD:%3dkt | HDG:%3d°%-2s | ALT:%3dft | FUEL:",
 		int(math.Round(g.heli.X)), int(math.Round(g.heli.Y)),
 		speedKnots, dirDegrees[g.heli.Dir], dirNames[g.heli.Dir], altitudeFeet,
 	)
@@ -767,7 +769,7 @@ func (g *Game) drawHUD() {
 	g.drawString(2+len(instrumentText), hudY+1, fuelText, fuelStyle)
 
 	// Display Guided Missile Ammo count as premium HUD icons
-	ammoLabel := "   |   MISSILES: "
+	ammoLabel := " | MSL:"
 	g.drawString(2+len(instrumentText)+len(fuelText), hudY+1, ammoLabel, hudStyle)
 
 	ammoColor := tcell.ColorGreen
@@ -795,7 +797,7 @@ func (g *Game) drawHUD() {
 
 	offset := 2 + len(statusLabel) + len(statusStr) + 2
 
-	padLabel := "   |   ALIGN: "
+	padLabel := " | ALIGN:"
 	g.drawString(offset, hudY+2, padLabel, hudStyle)
 	g.drawString(offset+len(padLabel), hudY+2, alignStr, alignStyle)
 
@@ -807,7 +809,7 @@ func (g *Game) drawHUD() {
 			boatsRemaining++
 		}
 	}
-	boatsLabel := "   |   BOATS: "
+	boatsLabel := " | BOATS:"
 	g.drawString(offset, hudY+2, boatsLabel, hudStyle)
 	boatsValStr := fmt.Sprintf("%d", boatsRemaining)
 	g.drawString(offset+len(boatsLabel), hudY+2, boatsValStr, hudStyle.Foreground(tcell.ColorLightCyan))
@@ -820,29 +822,14 @@ func (g *Game) drawHUD() {
 			factoriesRemaining++
 		}
 	}
-	factoriesLabel := "   |   FACTORIES: "
+	factoriesLabel := " | FACTORIES:"
 	g.drawString(offset, hudY+2, factoriesLabel, hudStyle)
 	factoriesValStr := fmt.Sprintf("%d", factoriesRemaining)
 	g.drawString(offset+len(factoriesLabel), hudY+2, factoriesValStr, hudStyle.Foreground(tcell.ColorOrange))
 
 	offset += len(factoriesLabel) + len(factoriesValStr)
 
-	armorColor := tcell.ColorGreen
-	if g.heli.Armor < 25.0 {
-		armorColor = tcell.ColorRed
-	} else if g.heli.Armor < 50.0 {
-		armorColor = tcell.ColorOrange
-	}
-	armorStyle := hudStyle.Foreground(armorColor)
-
-	armorLabel := "   |   ARMOR: "
-	g.drawString(offset, hudY+2, armorLabel, hudStyle)
-	armorText := fmt.Sprintf("%3.0f%%", g.heli.Armor)
-	g.drawString(offset+len(armorLabel), hudY+2, armorText, armorStyle)
-
-	offset += len(armorLabel) + len(armorText)
-
-	lockLabel := "   |   LOCK: "
+	lockLabel := " | LOCK:"
 	g.drawString(offset, hudY+2, lockLabel, hudStyle)
 
 	lockedBoat, lockedFactory, lockedTank, lockedStaticAA := g.lockedBoat, g.lockedFactory, g.lockedTank, g.lockedStaticAA
@@ -886,36 +873,156 @@ func (g *Game) drawHUD() {
 
 	offset += len(lockLabel) + len(lockStr)
 
-	// Display Carrier HP health bar
+	// Display row H-1: Control Instructions
+	controlStyle := hudStyle.Foreground(tcell.ColorSilver)
+	g.drawString(2, hudY+3, "WASD=Fly | S=Brake | SPC=Cannon | F=Missile | L=Land", controlStyle)
+
+	// Display row H+4: ARMOR and CARRIER bars (no numbers)
+	armorColor := tcell.ColorGreen
+	if g.heli.Armor < 25.0 {
+		armorColor = tcell.ColorRed
+	} else if g.heli.Armor < 50.0 {
+		armorColor = tcell.ColorOrange
+	}
+	armorBar := "ARMOR:["
+	armorFilled := int(math.Round(g.heli.Armor)) / 10
+	for b := 0; b < 10; b++ {
+		if b < armorFilled {
+			armorBar += "█"
+		} else {
+			armorBar += "░"
+		}
+	}
+	armorBar += "]"
+	g.drawString(2, hudY+4, armorBar, hudStyle.Foreground(armorColor).Bold(true))
+
 	carrierColor := tcell.ColorGreen
 	if g.carrier.Health < 25.0 {
 		carrierColor = tcell.ColorRed
 	} else if g.carrier.Health < 50.0 {
 		carrierColor = tcell.ColorOrange
 	}
-	carrierStyle := hudStyle.Foreground(carrierColor)
-
-	carrierLabel := "   |   CARRIER: "
-	g.drawString(offset, hudY+2, carrierLabel, hudStyle)
-
-	barStr := "["
-	pct := int(math.Round(g.carrier.Health))
-	filled := pct / 10
+	carrierBar := " | CARRIER:["
+	carrierFilled := int(math.Round(g.carrier.Health)) / 10
 	for b := 0; b < 10; b++ {
-		if b < filled {
-			barStr += "█"
+		if b < carrierFilled {
+			carrierBar += "█"
 		} else {
-			barStr += "░"
+			carrierBar += "░"
 		}
 	}
-	barStr += "]"
-	g.drawString(offset+len(carrierLabel), hudY+2, barStr, carrierStyle.Bold(true))
-	carrierText := fmt.Sprintf(" %3d%%", pct)
-	g.drawString(offset+len(carrierLabel)+len(barStr), hudY+2, carrierText, carrierStyle)
+	carrierBar += "]"
+	g.drawString(2+len(armorBar), hudY+4, carrierBar, hudStyle.Foreground(carrierColor).Bold(true))
 
-	// Display row H-1: Control Instructions
-	controlStyle := hudStyle.Foreground(tcell.ColorSilver)
-	g.drawString(2, hudY+3, "CONTROLS: ARROWS/WASD = Fly | DOWN/S = Brakes | SPACE = Cannon | F = Guided Missile | L = Land/Takeoff", controlStyle)
+	// Cannon heat bar
+	const maxHeat = 20
+	heatBarStr := " | CANNON:["
+	heatColor := tcell.ColorGreen
+	if g.heli.CannonJammed > 0 {
+		heatBarStr += "JAMMED    "
+		heatColor = tcell.ColorRed
+	} else {
+		heatFilled := g.heli.CannonHeat * 10 / maxHeat
+		if g.heli.CannonHeat >= 16 {
+			heatColor = tcell.ColorRed
+		} else if g.heli.CannonHeat >= 10 {
+			heatColor = tcell.ColorOrange
+		}
+		for b := 0; b < 10; b++ {
+			if b < heatFilled {
+				heatBarStr += "█"
+			} else {
+				heatBarStr += "░"
+			}
+		}
+	}
+	heatBarStr += "]"
+	g.drawString(2+len(armorBar)+len(carrierBar), hudY+4, heatBarStr, hudStyle.Foreground(heatColor).Bold(true))
+
+	g.drawRadar(hudY)
+}
+
+// drawRadar draws a small player-centered radar box on the right side of the HUD.
+// Shows boats (~), factories (■), and static AA (^) as colored dots; player as (+).
+// Tanks are intentionally excluded.
+func (g *Game) drawRadar(hudY int) {
+	const (
+		radarW     = 23
+		radarH     = 6
+		radarRange = 100.0
+	)
+	if g.width < 30 {
+		return
+	}
+	rx := g.width - radarW - 1
+	ry := hudY
+
+	borderStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorDarkCyan)
+
+	// Top border (joins the HUD separator line)
+	g.screen.SetContent(rx, ry, '╦', nil, borderStyle)
+	for dx := 1; dx < radarW-1; dx++ {
+		g.screen.SetContent(rx+dx, ry, '═', nil, borderStyle)
+	}
+	g.screen.SetContent(rx+radarW-1, ry, '╗', nil, borderStyle)
+	label := " RADAR "
+	g.drawString(rx+(radarW-len(label))/2, ry, label, borderStyle.Foreground(tcell.ColorYellow))
+
+	// Side borders
+	for dy := 1; dy < radarH-1; dy++ {
+		g.screen.SetContent(rx, ry+dy, '║', nil, borderStyle)
+		g.screen.SetContent(rx+radarW-1, ry+dy, '║', nil, borderStyle)
+	}
+
+	// Bottom border
+	g.screen.SetContent(rx, ry+radarH-1, '╚', nil, borderStyle)
+	for dx := 1; dx < radarW-1; dx++ {
+		g.screen.SetContent(rx+dx, ry+radarH-1, '═', nil, borderStyle)
+	}
+	g.screen.SetContent(rx+radarW-1, ry+radarH-1, '╝', nil, borderStyle)
+
+	intW := radarW - 2 // 21
+	intH := radarH - 2 // 4
+	cx := rx + 1 + intW/2
+	cy := ry + 1 + intH/2
+
+	plotDot := func(wx, wy float64, sym rune, style tcell.Style) {
+		dx := wx - g.heli.X
+		dy := wy - g.heli.Y
+		if dx*dx+dy*dy > radarRange*radarRange {
+			return
+		}
+		px := cx + int(math.Round(dx/radarRange*float64(intW/2)))
+		py := cy + int(math.Round(dy/radarRange*float64(intH/2)))
+		if px <= rx || px >= rx+radarW-1 || py <= ry || py >= ry+radarH-1 {
+			return
+		}
+		g.screen.SetContent(px, py, sym, nil, style)
+	}
+
+	boatStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorLightCyan)
+	factStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.NewRGBColor(255, 165, 0))
+	aaStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorRed)
+
+	for i := range g.boats {
+		if g.boats[i].Active {
+			plotDot(g.boats[i].X, g.boats[i].Y, '~', boatStyle)
+		}
+	}
+	for i := range g.factories {
+		if g.factories[i].Active {
+			plotDot(g.factories[i].X, g.factories[i].Y, '■', factStyle)
+		}
+	}
+	for i := range g.staticAAs {
+		if g.staticAAs[i].Active {
+			plotDot(g.staticAAs[i].X, g.staticAAs[i].Y, '^', aaStyle)
+		}
+	}
+
+	// Player drawn last so it's never overwritten
+	playerStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorYellow).Bold(true)
+	g.screen.SetContent(cx, cy, '+', nil, playerStyle)
 }
 
 // drawString is a helper to draw string labels cell by cell
@@ -932,7 +1039,7 @@ func (g *Game) drawCell(x, y int, r rune, fg tcell.Color) {
 	camX, camY := g.getCameraOffset()
 	sx := x - camX
 	sy := y - camY
-	if sx >= 0 && sx < g.width && sy >= 0 && sy < g.height-4 {
+	if sx >= 0 && sx < g.width && sy >= 0 && sy < g.height-6 {
 		bgStyle := g.getMapStyle(x, y)
 		g.screen.SetContent(sx, sy, r, nil, bgStyle.Foreground(fg))
 	}

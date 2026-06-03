@@ -52,7 +52,7 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 		}
 	}
 
-	if ch == ' ' && g.heli.FireCooldown == 0 && g.heli.Fuel > 0 {
+	if ch == ' ' && g.heli.FireCooldown == 0 && g.heli.CannonJammed == 0 && g.heli.Fuel > 0 {
 		bulletSpeed := 2.0
 		bx := g.heli.X + dx[g.heli.Dir]*1.5
 		by := g.heli.Y + dy[g.heli.Dir]*1.5
@@ -63,6 +63,18 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 		slog.Info("Aerial cannon fired", "dir", g.heli.Dir, "degrees", dirDegrees[g.heli.Dir])
 		PlaySound("laser")
 		g.heli.FireCooldown = 4
+
+		const maxHeat = 20
+		g.heli.CannonHeat += 5
+		if g.heli.CannonHeat >= maxHeat {
+			g.heli.CannonHeat = 0
+			g.heli.CannonJammed = 60 // 2.4 seconds at 25 FPS
+			g.heli.Armor -= 5.0
+			if g.heli.Armor < 0 {
+				g.heli.Armor = 0
+			}
+			slog.Warn("Cannon overheated! Barrel jammed.", "jam_ticks", 60, "armor_remaining", g.heli.Armor)
+		}
 	}
 
 	if (ch == 'f' || ch == 'F' || ch == 'm' || ch == 'M') && g.heli.MissileCooldown == 0 && g.heli.Fuel > 0 && g.heli.MissileAmmo > 0 {

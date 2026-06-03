@@ -47,7 +47,7 @@ type Game struct {
 func New(screen tcell.Screen) *Game {
 	w, h := screen.Size()
 
-	playableHeight := h - 4
+	playableHeight := h - 6
 	if playableHeight < 10 {
 		playableHeight = 10
 	}
@@ -85,9 +85,9 @@ func New(screen tcell.Screen) *Game {
 	}
 
 	factories := []Factory{
-		{X: float64(worldWidth * 2 / 3), Y: float64(worldHeight / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 100, DronesRemaining: 8},
-		{X: float64(worldWidth - 35), Y: float64(worldHeight / 2), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 150, DronesRemaining: 8},
-		{X: float64(worldWidth - 15), Y: float64(worldHeight * 7 / 8), Health: 15, MaxHealth: 15, Active: true, FireCooldown: 200, DronesRemaining: 8},
+		{X: float64(worldWidth * 2 / 3), Y: float64(worldHeight / 8), Health: 25, MaxHealth: 25, Active: true, FireCooldown: 100, DronesRemaining: 8},
+		{X: float64(worldWidth - 35), Y: float64(worldHeight / 2), Health: 25, MaxHealth: 25, Active: true, FireCooldown: 150, DronesRemaining: 8},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight * 7 / 8), Health: 25, MaxHealth: 25, Active: true, FireCooldown: 200, DronesRemaining: 8},
 	}
 
 	drones := make([]Drone, 0, len(factories)*2+2)
@@ -103,9 +103,9 @@ func New(screen tcell.Screen) *Game {
 	drones = append(drones, Drone{X: cx, Y: cy, Active: true, Angle: 4.0 * math.Pi / 3.0, FactoryIdx: -1})
 
 	tanks := []Tank{
-		{X: float64(worldWidth - 15), Y: float64(worldHeight * 5 / 16), VY: 0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(worldHeight / 8), MaxCoord: float64(worldHeight / 2)},
-		{X: float64(worldWidth - 15), Y: float64(worldHeight * 11 / 16), VY: -0.04, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 0, MinCoord: float64(worldHeight / 2), MaxCoord: float64(worldHeight * 7 / 8)},
-		{X: float64(worldWidth - 11), Y: float64(worldHeight / 2), VX: 0.06, Health: 4, MaxHealth: 4, Active: false, PatrolDir: 1, MinCoord: float64(worldWidth - 15), MaxCoord: float64(worldWidth - 7)},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight * 5 / 16), VY: 0.04, Health: 6, MaxHealth: 6, Active: false, PatrolDir: 0, MinCoord: float64(worldHeight / 8), MaxCoord: float64(worldHeight / 2)},
+		{X: float64(worldWidth - 15), Y: float64(worldHeight * 11 / 16), VY: -0.04, Health: 6, MaxHealth: 6, Active: false, PatrolDir: 0, MinCoord: float64(worldHeight / 2), MaxCoord: float64(worldHeight * 7 / 8)},
+		{X: float64(worldWidth - 11), Y: float64(worldHeight / 2), VX: 0.06, Health: 6, MaxHealth: 6, Active: false, PatrolDir: 1, MinCoord: float64(worldWidth - 15), MaxCoord: float64(worldWidth - 7)},
 	}
 
 	// Compute initial camera offset centered on the helicopter
