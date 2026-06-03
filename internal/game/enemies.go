@@ -15,32 +15,10 @@ func (g *Game) updateBoats() {
 		}
 
 		if boat.SinkingTimer > 0 {
-			boat.SinkingTimer--
-
-			if boat.SinkingTimer%3 == 0 {
-				offsetX := float64(rand.Intn(11) - 5)
-				offsetY := float64(rand.Intn(3) - 1)
-				g.explosions = append(g.explosions, Explosion{
-					X:   int(math.Round(boat.X + offsetX)),
-					Y:   int(math.Round(boat.Y + offsetY)),
-					Age: 0,
-				})
-			}
-
-			if boat.SinkingTimer == 0 {
+			if g.tickSinking(&boat.SinkingTimer, boat.X, boat.Y, 5, 1, 5, 1, 0) {
 				boat.Active = false
 				g.boatsSunk++
 				slog.Info("Doomed boat has fully sunk", "boat_idx", i, "total_sunk", g.boatsSunk)
-
-				for ddx := -5; ddx <= 5; ddx++ {
-					for ddy := -1; ddy <= 1; ddy++ {
-						g.explosions = append(g.explosions, Explosion{
-							X:   int(math.Round(boat.X)) + ddx,
-							Y:   int(math.Round(boat.Y)) + ddy,
-							Age: 0,
-						})
-					}
-				}
 				continue
 			}
 		}
@@ -85,24 +63,9 @@ func (g *Game) updateBoats() {
 			dxVec := g.heli.X - boat.X
 			dyVec := g.heli.Y - boat.Y
 			dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-
 			if dist > 0 && dist < BoatAARange {
-				bulletSpeed := 2.0
-				bvx := (dxVec / dist) * bulletSpeed
-				bvy := (dyVec / dist) * bulletSpeed
-
-				spawned := false
-				for k := 0; k < len(g.bullets); k++ {
-					if !g.bullets[k].Active {
-						g.bullets[k] = Bullet{X: boat.X, Y: boat.Y, StartX: boat.X, StartY: boat.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true}
-						spawned = true
-						break
-					}
-				}
-				if !spawned && len(g.bullets) < 24 {
-					g.bullets = append(g.bullets, Bullet{X: boat.X, Y: boat.Y, StartX: boat.X, StartY: boat.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true})
-				}
-
+				speed := 2.0
+				g.spawnEnemyBullet(boat.X, boat.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
 				slog.Info("Boat fired anti-aircraft projectile", "boat_idx", i, "x", boat.X, "y", boat.Y)
 				boat.FireCooldown = 60 + rand.Intn(80)
 			}
@@ -117,27 +80,12 @@ func (g *Game) updateBoats() {
 			dxVec := targetX - boat.X
 			dyVec := targetY - boat.Y
 			dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-
 			if dist > 0 {
-				initialSpeed := 0.3
-				mvx := (dxVec / dist) * initialSpeed
-				mvy := (dyVec / dist) * initialSpeed
-
-				spawned := false
-				for k := 0; k < len(g.missiles); k++ {
-					if !g.missiles[k].Active {
-						g.missiles[k] = Missile{X: boat.X, Y: boat.Y, StartX: boat.X, StartY: boat.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true}
-						spawned = true
-						break
-					}
-				}
-				if !spawned && len(g.missiles) < 16 {
-					g.missiles = append(g.missiles, Missile{X: boat.X, Y: boat.Y, StartX: boat.X, StartY: boat.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
-				}
+				speed := 0.3
+				g.spawnEnemyMissile(boat.X, boat.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
 				slog.Info("Boat launched guided missile at Carrier!", "boat_idx", i, "boat_x", boat.X, "boat_y", boat.Y)
 				PlaySound("missile")
 			}
-
 			boat.MissileCooldown = 600 + rand.Intn(400)
 		}
 	}
@@ -159,22 +107,9 @@ func (g *Game) updateFactories() {
 		}
 
 		if fact.SinkingTimer > 0 {
-			fact.SinkingTimer--
-
-			if fact.SinkingTimer%3 == 0 {
-				offsetX := float64(rand.Intn(7) - 3)
-				offsetY := float64(rand.Intn(3) - 1)
-				g.explosions = append(g.explosions, Explosion{
-					X:   int(math.Round(fact.X + offsetX)),
-					Y:   int(math.Round(fact.Y + offsetY)),
-					Age: 0,
-				})
-			}
-
-			if fact.SinkingTimer == 0 {
+			if g.tickSinking(&fact.SinkingTimer, fact.X, fact.Y, 3, 1, 6, 2, 4) {
 				fact.Active = false
 				slog.Info("Enemy military Factory has been completely destroyed!", "idx", fIdx)
-
 				for d := 0; d < len(g.drones); d++ {
 					if g.drones[d].Active && g.drones[d].FactoryIdx == fIdx {
 						g.drones[d].Active = false
@@ -182,16 +117,6 @@ func (g *Game) updateFactories() {
 							X:   int(math.Round(g.drones[d].X)),
 							Y:   int(math.Round(g.drones[d].Y)),
 							Age: 0,
-						})
-					}
-				}
-
-				for ddx := -6; ddx <= 6; ddx++ {
-					for ddy := -2; ddy <= 2; ddy++ {
-						g.explosions = append(g.explosions, Explosion{
-							X:   int(math.Round(fact.X)) + ddx,
-							Y:   int(math.Round(fact.Y)) + ddy,
-							Age: rand.Intn(4),
 						})
 					}
 				}
@@ -206,24 +131,9 @@ func (g *Game) updateFactories() {
 				dxVec := g.heli.X - fact.X
 				dyVec := g.heli.Y - fact.Y
 				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-
 				if dist > 0 && dist < BoatAARange {
-					bulletSpeed := 2.0
-					bvx := (dxVec / dist) * bulletSpeed
-					bvy := (dyVec / dist) * bulletSpeed
-
-					spawned := false
-					for k := 0; k < len(g.bullets); k++ {
-						if !g.bullets[k].Active {
-							g.bullets[k] = Bullet{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true}
-							spawned = true
-							break
-						}
-					}
-					if !spawned && len(g.bullets) < 24 {
-						g.bullets = append(g.bullets, Bullet{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true})
-					}
-
+					speed := 2.0
+					g.spawnEnemyBullet(fact.X, fact.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
 					slog.Info("Factory fired fortress anti-aircraft projectile!", "x", fact.X, "y", fact.Y, "idx", fIdx)
 					fact.FireCooldown = 40 + rand.Intn(40)
 				}
@@ -238,23 +148,9 @@ func (g *Game) updateFactories() {
 				dxVec := targetX - fact.X
 				dyVec := targetY - fact.Y
 				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-
 				if dist > 0 {
-					initialSpeed := 0.25
-					mvx := (dxVec / dist) * initialSpeed
-					mvy := (dyVec / dist) * initialSpeed
-
-					spawned := false
-					for k := 0; k < len(g.missiles); k++ {
-						if !g.missiles[k].Active {
-							g.missiles[k] = Missile{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true}
-							spawned = true
-							break
-						}
-					}
-					if !spawned && len(g.missiles) < 16 {
-						g.missiles = append(g.missiles, Missile{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
-					}
+					speed := 0.25
+					g.spawnEnemyMissile(fact.X, fact.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
 					slog.Info("Factory launched fortress ground missile at Carrier!", "factory_idx", fIdx, "fact_x", fact.X, "fact_y", fact.Y)
 					PlaySound("missile")
 				}
@@ -332,31 +228,9 @@ func (g *Game) updateTanks() {
 		}
 
 		if tank.SinkingTimer > 0 {
-			tank.SinkingTimer--
-
-			if tank.SinkingTimer%3 == 0 {
-				offsetX := float64(rand.Intn(3) - 1)
-				offsetY := float64(rand.Intn(3) - 1)
-				g.explosions = append(g.explosions, Explosion{
-					X:   int(math.Round(tank.X + offsetX)),
-					Y:   int(math.Round(tank.Y + offsetY)),
-					Age: 0,
-				})
-			}
-
-			if tank.SinkingTimer == 0 {
+			if g.tickSinking(&tank.SinkingTimer, tank.X, tank.Y, 1, 1, 2, 1, 3) {
 				tank.Active = false
 				slog.Info("Patrolling Tank has fully blown up!", "tank_idx", tIdx)
-
-				for ddx := -2; ddx <= 2; ddx++ {
-					for ddy := -1; ddy <= 1; ddy++ {
-						g.explosions = append(g.explosions, Explosion{
-							X:   int(math.Round(tank.X)) + ddx,
-							Y:   int(math.Round(tank.Y)) + ddy,
-							Age: rand.Intn(3),
-						})
-					}
-				}
 				continue
 			}
 		}
@@ -390,24 +264,9 @@ func (g *Game) updateTanks() {
 				dxVec := g.heli.X - tank.X
 				dyVec := g.heli.Y - tank.Y
 				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-
 				if dist > 0 && dist < 40.0 {
-					bulletSpeed := 2.2
-					bvx := (dxVec / dist) * bulletSpeed
-					bvy := (dyVec / dist) * bulletSpeed
-
-					spawned := false
-					for k := 0; k < len(g.bullets); k++ {
-						if !g.bullets[k].Active {
-							g.bullets[k] = Bullet{X: tank.X, Y: tank.Y, StartX: tank.X, StartY: tank.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true}
-							spawned = true
-							break
-						}
-					}
-					if !spawned && len(g.bullets) < 24 {
-						g.bullets = append(g.bullets, Bullet{X: tank.X, Y: tank.Y, StartX: tank.X, StartY: tank.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true})
-					}
-
+					speed := 2.2
+					g.spawnEnemyBullet(tank.X, tank.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
 					slog.Info("Tank fired flak projectile!", "tank_idx", tIdx, "x", tank.X, "y", tank.Y)
 					tank.FireCooldown = 50 + rand.Intn(40)
 				}
@@ -424,31 +283,9 @@ func (g *Game) updateStaticAAs() {
 		}
 
 		if sa.SinkingTimer > 0 {
-			sa.SinkingTimer--
-
-			if sa.SinkingTimer%3 == 0 {
-				offsetX := float64(rand.Intn(3) - 1)
-				offsetY := float64(rand.Intn(3) - 1)
-				g.explosions = append(g.explosions, Explosion{
-					X:   int(math.Round(sa.X + offsetX)),
-					Y:   int(math.Round(sa.Y + offsetY)),
-					Age: 0,
-				})
-			}
-
-			if sa.SinkingTimer == 0 {
+			if g.tickSinking(&sa.SinkingTimer, sa.X, sa.Y, 1, 1, 2, 1, 3) {
 				sa.Active = false
 				slog.Info("Static AA has fully blown up!", "idx", saIdx)
-
-				for ddx := -2; ddx <= 2; ddx++ {
-					for ddy := -1; ddy <= 1; ddy++ {
-						g.explosions = append(g.explosions, Explosion{
-							X:   int(math.Round(sa.X)) + ddx,
-							Y:   int(math.Round(sa.Y)) + ddy,
-							Age: rand.Intn(3),
-						})
-					}
-				}
 				continue
 			}
 		}
@@ -460,24 +297,9 @@ func (g *Game) updateStaticAAs() {
 				dxVec := g.heli.X - sa.X
 				dyVec := g.heli.Y - sa.Y
 				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-
 				if dist > 0 && dist < 45.0 {
-					bulletSpeed := 2.2
-					bvx := (dxVec / dist) * bulletSpeed
-					bvy := (dyVec / dist) * bulletSpeed
-
-					spawned := false
-					for k := 0; k < len(g.bullets); k++ {
-						if !g.bullets[k].Active {
-							g.bullets[k] = Bullet{X: sa.X, Y: sa.Y, StartX: sa.X, StartY: sa.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true}
-							spawned = true
-							break
-						}
-					}
-					if !spawned && len(g.bullets) < 24 {
-						g.bullets = append(g.bullets, Bullet{X: sa.X, Y: sa.Y, StartX: sa.X, StartY: sa.Y, VX: bvx, VY: bvy, Active: true, IsEnemy: true})
-					}
-
+					speed := 2.2
+					g.spawnEnemyBullet(sa.X, sa.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
 					slog.Info("Static AA fired flak projectile!", "idx", saIdx, "x", sa.X, "y", sa.Y)
 					sa.FireCooldown = 45 + rand.Intn(35)
 				}

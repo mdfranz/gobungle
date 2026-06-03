@@ -372,18 +372,7 @@ func (g *Game) updateCarrierDefense() {
 	mvx := (dxVec / dist) * initialSpeed
 	mvy := (dyVec / dist) * initialSpeed
 
-	spawned := false
-	for i := 0; i < len(g.missiles); i++ {
-		if !g.missiles[i].Active {
-			g.missiles[i] = Missile{X: cx, Y: cy, StartX: cx, StartY: cy, VX: mvx, VY: mvy, Active: true, IsEnemy: false, IsCarrier: true}
-			spawned = true
-			break
-		}
-	}
-	if !spawned && len(g.missiles) < 16 {
-		g.missiles = append(g.missiles, Missile{X: cx, Y: cy, StartX: cx, StartY: cy, VX: mvx, VY: mvy, Active: true, IsEnemy: false, IsCarrier: true})
-	}
-
+	g.spawnCarrierMissile(cx, cy, mvx, mvy)
 	slog.Info("Carrier launched defensive SSM at enemy boat!", "boat_x", targetBoat.X, "dist", minDist)
 	g.carrier.MissileCooldown = 300 + rand.Intn(150)
 }
