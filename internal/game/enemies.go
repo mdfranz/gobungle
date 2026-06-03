@@ -127,7 +127,6 @@ func (g *Game) updateBoats() {
 					g.missiles = append(g.missiles, Missile{X: boat.X, Y: boat.Y, StartX: boat.X, StartY: boat.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
 				}
 				slog.Info("Boat launched guided missile at Carrier!", "boat_idx", i, "boat_x", boat.X, "boat_y", boat.Y)
-				_ = g.screen.Beep() // Audible ding immediately on missile launch
 				PlaySound("missile")
 			}
 
@@ -249,7 +248,6 @@ func (g *Game) updateFactories() {
 						g.missiles = append(g.missiles, Missile{X: fact.X, Y: fact.Y, StartX: fact.X, StartY: fact.Y, VX: mvx, VY: mvy, Active: true, InterceptionRolled: false, IsEnemy: true})
 					}
 					slog.Info("Factory launched fortress ground missile at Carrier!", "factory_idx", fIdx, "fact_x", fact.X, "fact_y", fact.Y)
-					_ = g.screen.Beep() // Audible ding immediately on missile launch
 					PlaySound("missile")
 				}
 			}

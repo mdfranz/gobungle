@@ -2,7 +2,9 @@
 
 # 🚁 Gobungle: Tactical Helicopter Combat & Carrier Defense
 
-Gobungle is a high-octane, terminal-based tactical combat game written in Go using the `tcell` library. Command a state-of-the-art attack helicopter, defend your mothership aircraft carrier against rogue warships, and execute surgical lock-on guided missile strikes!
+Gobungle is a terminal-based tactical combat game written in Go using the `tcell` library. 
+
+Command a state-of-the-art attack helicopter, defend your mothership aircraft carrier against rogue warships, and execute surgical lock-on guided missile strikes!
 
 Inspired by Will Wright's legendary 1984 8-bit classic [Raid on Bungeling Bay](https://en.wikipedia.org/wiki/Raid_on_Bungeling_Bay), Gobungle adapts the iconic helicopter carrier defense formula into a fast-paced command line experience.
 
@@ -16,7 +18,7 @@ Inspired by Will Wright's legendary 1984 8-bit classic [Raid on Bungeling Bay](h
 Your mission is to seek out and destroy three heavily armed rogue gunboats patrolling the ocean and the **fortress factory island**, while protecting your home aircraft carrier.
 
 ### 🎥 Scrolling World & Camera System
-* **Expanded Playfield**: The game world is significantly larger than your terminal window (2x width and 2x height), providing a vast theater of operations.
+* **Expanded Playfield**: The game world is larger than your terminal window (2x width and 2x height), providing a vast theater of operations.
 * **Dynamic Camera**: A sophisticated "dead-zone" camera system follows your helicopter as you fly. The camera stays centered on your aircraft but allows for minor movement before scrolling, ensuring you always have a clear view of the surrounding airspace and terrain.
 * **World Boundaries**: The world is bounded, and the camera automatically clamps to the edges of the map, preventing you from flying into the "void".
 

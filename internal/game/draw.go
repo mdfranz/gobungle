@@ -694,9 +694,7 @@ func (g *Game) drawHUD() {
 		if (g.heli.RotorState/2)%2 == 0 {
 			g.drawString(g.width-33, hudY, "⚠️ WARNING: INCOMING MISSILE ⚠️", borderStyle.Foreground(tcell.ColorRed).Bold(true))
 		}
-		// Tactical audio warning bell: beep every 20 frames (800ms) to avoid audio clutter
 		if g.Ticks%20 == 0 {
-			_ = g.screen.Beep()
 			PlaySound("warning")
 		}
 	}
