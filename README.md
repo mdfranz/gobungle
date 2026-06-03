@@ -124,3 +124,20 @@ GPS: (124, 45) | SPEED: 110 KTS | HEADING: 90° (E) | ALTITUDE: 450 FT | FUEL: [
 * **Blinking HUD & Audio Warnings**: The dashboard flashes a bright red `⚠️ WARNING: INCOMING MISSILE ⚠️` alert and emits an audible "ping" whenever an active enemy missile is flying toward your carrier deck, giving you time to race back and intercept it!
 * **GPS Telemetry**: The HUD now provides real-time GPS coordinates, essential for navigating the expanded scrolling world and locating strategic targets across the vast coastline.
 * **Lock Telemetry**: The lock display is fully target-aware, showing `BOAT` or `FACTORY` when a target falls inside your seeker cone, confirming locking status before missile launch.
+
+---
+
+## 📚 Key Technical Documents
+
+For more in-depth technical information, refer to the following documents:
+
+*   **[Architecture Overview](ARCHITECTURE.md)**: High-level system design and architectural patterns.
+*   **[Implementation Details](IMPL.md)**: Detailed technical implementation notes.
+*   **[Internal Game Engine Implementation](internal/game/IMPL.md)**: Deep dive into the `internal/game` package.
+*   **[Technical Diagrams](internal/game/DIAGRAMS.md)**: Visual representations of system components.
+*   **[Gameplay Mechanics](GAMEPLAY.md)**: Comprehensive breakdown of game rules and mechanics.
+*   **[Project Roadmap](PROJECT.md)**: Current status and future development plans.
+*   **[Package Documentation](PKG.md)**: Overview of the project's Go packages.
+*   **[Known Issues](ISSUES.md)**: Tracking of bugs and development hurdles.
+*   **[Modular Interface Refactor](modular-interface-refactor.md)**: Documentation of the modular refactoring process.
+
