@@ -130,6 +130,16 @@ func (g *Game) appendMissile(m Missile) {
 	}
 }
 
+func (g *Game) appendDrone(d Drone) {
+	for k := range g.drones {
+		if !g.drones[k].Active {
+			g.drones[k] = d
+			return
+		}
+	}
+	g.drones = append(g.drones, d)
+}
+
 func (g *Game) spawnEnemyBullet(x, y, vx, vy float64) {
 	g.appendBullet(Bullet{X: x, Y: y, StartX: x, StartY: y, VX: vx, VY: vy, Active: true, IsEnemy: true}, 24)
 }

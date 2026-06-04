@@ -6,6 +6,11 @@ import (
 	"math/rand"
 )
 
+const (
+	waterMinX        = 6.0  // minimum X boats can reach (left edge of navigable water)
+	boatMissileRange = 80.0 // minimum distance from carrier center at which boats stop advancing
+)
+
 // updateBoats moves boats and handles their AA and missile firing.
 func (g *Game) updateBoats() {
 	for i := 0; i < len(g.boats); i++ {
@@ -18,8 +23,7 @@ func (g *Game) updateBoats() {
 			if g.tickSinking(&boat.SinkingTimer, boat.X, boat.Y, 5, 1, 5, 1, 0) {
 				g.applyBlastDamage(boat.X, boat.Y, 7.0, 20.0)
 				boat.Active = false
-				g.boatsSunk++
-				slog.Info("Doomed boat has fully sunk", "boat_idx", i, "total_sunk", g.boatsSunk)
+				slog.Info("Doomed boat has fully sunk", "boat_idx", i)
 				continue
 			}
 		}
@@ -49,27 +53,18 @@ func (g *Game) updateBoats() {
 			continue
 		}
 
-		// Gradually expand patrol range from coast toward carrier
-		if boat.PatrolMinX > 6 {
+		// Advance patrol front toward carrier, stopping at missile range.
+		missileStopX := float64(g.carrier.X+g.carrier.Width/2) + boatMissileRange
+		if boat.PatrolMinX > missileStopX {
 			boat.PatrolMinX -= 0.02
-			if boat.PatrolMinX < 6 {
-				boat.PatrolMinX = 6
+			if boat.PatrolMinX < missileStopX {
+				boat.PatrolMinX = missileStopX
 			}
 		}
 
 		// AA fire against the helicopter
-		if boat.FireCooldown > 0 {
-			boat.FireCooldown--
-		} else if !g.heli.Landed && g.heli.Fuel > 0 && g.heli.Armor > 0 {
-			dxVec := g.heli.X - boat.X
-			dyVec := g.heli.Y - boat.Y
-			dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-			if dist > 0 && dist < BoatAARange {
-				speed := 2.0
-				g.spawnEnemyBullet(boat.X, boat.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
-				slog.Info("Boat fired anti-aircraft projectile", "boat_idx", i, "x", boat.X, "y", boat.Y)
-				boat.FireCooldown = 60 + rand.Intn(80)
-			}
+		if g.tickAAFire(boat.X, boat.Y, &boat.FireCooldown, BoatAARange, 2.0, 60, 80) {
+			slog.Info("Boat fired anti-aircraft projectile", "boat_idx", i, "x", boat.X, "y", boat.Y)
 		}
 
 		// Guided missile at carrier
@@ -92,33 +87,45 @@ func (g *Game) updateBoats() {
 	}
 }
 
-// updateStealthBoats moves active stealth drone speedboats and rolls for new spawns.
-// Spawn probability scales with wave: 8% per wave capped at 80%, checked every 500 ticks.
-// Forced spawn at Ticks == 600 (approx 10s) for testing new mechanics.
+// updateStealthBoats moves active stealth drone speedboats, rolls for new spawns,
+// and updates the stealthNear warning flag + audio.
+// Every 1500 ticks (~1 minute) there is a wave-scaled chance to queue a launch;
+// the actual spawn fires after a random 1-10 second delay.
 func (g *Game) updateStealthBoats() {
-	if g.Ticks == 600 {
-		g.spawnStealthBoat()
-		return
-	}
+	const (
+		minuteTicks = 1500 // 25 FPS * 60s
+		ticksPerSec = minuteTicks / 60
+		warnDistSq  = 71.0 * 71.0
+	)
 
-	if g.Ticks > 0 && g.Ticks%500 == 0 {
-		activeCount := 0
+	// Roll once per minute when no boat is active and no launch is pending.
+	if g.Ticks > 0 && g.Ticks%minuteTicks == 0 {
+		noneActive := true
 		for i := range g.stealthBoats {
 			if g.stealthBoats[i].Active {
-				activeCount++
+				noneActive = false
+				break
 			}
 		}
-		if activeCount == 0 {
-			chance := g.Wave * 8
+		if noneActive && g.stealthSpawnAt == 0 {
+			chance := g.Wave * 10
 			if chance > 80 {
 				chance = 80
 			}
 			if rand.Intn(100) < chance {
-				g.spawnStealthBoat()
+				delaySec := 1 + rand.Intn(10)
+				g.stealthSpawnAt = g.Ticks + delaySec*ticksPerSec
 			}
 		}
 	}
 
+	// Fire the pending launch when its tick arrives.
+	if g.stealthSpawnAt > 0 && g.Ticks >= g.stealthSpawnAt {
+		g.stealthSpawnAt = 0
+		g.spawnStealthBoat()
+	}
+
+	// Move boats and log any that exit the map.
 	for i := range g.stealthBoats {
 		sb := &g.stealthBoats[i]
 		if !sb.Active {
@@ -126,19 +133,45 @@ func (g *Game) updateStealthBoats() {
 		}
 		sb.X += sb.VX
 		if sb.X < 0 {
+			slog.Info("Stealth drone speedboat exited map without hitting carrier", "idx", i)
 			sb.Active = false
+		}
+	}
+
+	// Update proximity warning flag and trigger audio from the game-logic layer.
+	carrierCX := float64(g.carrier.X + g.carrier.Width/2)
+	carrierCY := float64(g.carrier.Y + g.carrier.Height/2)
+	g.stealthNear = false
+	for i := range g.stealthBoats {
+		sb := &g.stealthBoats[i]
+		if !sb.Active {
+			continue
+		}
+		dx := sb.X - carrierCX
+		dy := sb.Y - carrierCY
+		if dx*dx+dy*dy < warnDistSq {
+			g.stealthNear = true
+			break
+		}
+	}
+	if g.stealthNear {
+		if g.Ticks%20 == 0 {
+			PlaySound("warning")
+		}
+		if g.Ticks%15 == 0 {
+			PlaySound("speedboat")
 		}
 	}
 }
 
 func (g *Game) spawnStealthBoat() {
 	carrierCY := float64(g.carrier.Y + g.carrier.Height/2)
-	spawnY := carrierCY + float64(rand.Intn(11)-5)
+	spawnY := carrierCY + float64(rand.Intn(7)-3)
 	spawnX := g.getCoastlineThreshold(int(math.Round(spawnY))) - 3.0
 	sb := StealthBoat{
 		X:      spawnX,
 		Y:      spawnY,
-		VX:     -0.35,
+		VX:     -0.42,
 		Active: true,
 	}
 	for i := range g.stealthBoats {
@@ -150,6 +183,27 @@ func (g *Game) spawnStealthBoat() {
 	}
 	g.stealthBoats = append(g.stealthBoats, sb)
 	slog.Warn("Stealth drone speedboat launched!", "x", spawnX, "y", spawnY, "wave", g.Wave)
+}
+
+// tickAAFire decrements the cooldown and, when it expires, fires a bullet toward the
+// helicopter if it is airborne and within aaRange. Returns true if a shot was fired.
+func (g *Game) tickAAFire(x, y float64, cooldown *int, aaRange, speed float64, cooldownMin, cooldownRand int) bool {
+	if *cooldown > 0 {
+		*cooldown--
+		return false
+	}
+	if g.heli.Landed || g.heli.Fuel <= 0 || g.heli.Armor <= 0 {
+		return false
+	}
+	dx := g.heli.X - x
+	dy := g.heli.Y - y
+	dist := math.Sqrt(dx*dx + dy*dy)
+	if dist <= 0 || dist >= aaRange {
+		return false
+	}
+	g.spawnEnemyBullet(x, y, (dx/dist)*speed, (dy/dist)*speed)
+	*cooldown = cooldownMin + rand.Intn(cooldownRand)
+	return true
 }
 
 // updateLandForces updates factories, drone orbits, tanks, and static AA guns.
@@ -187,18 +241,8 @@ func (g *Game) updateFactories() {
 
 		// Factory AA fire
 		if fact.Active && fact.SinkingTimer == 0 {
-			if fact.FireCooldown > 0 {
-				fact.FireCooldown--
-			} else if !g.heli.Landed && g.heli.Fuel > 0 && g.heli.Armor > 0 {
-				dxVec := g.heli.X - fact.X
-				dyVec := g.heli.Y - fact.Y
-				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-				if dist > 0 && dist < BoatAARange {
-					speed := 2.0
-					g.spawnEnemyBullet(fact.X, fact.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
-					slog.Info("Factory fired fortress anti-aircraft projectile!", "x", fact.X, "y", fact.Y, "idx", fIdx)
-					fact.FireCooldown = 40 + rand.Intn(40)
-				}
+			if g.tickAAFire(fact.X, fact.Y, &fact.FireCooldown, BoatAARange, 2.0, 40, 40) {
+				slog.Info("Factory fired fortress anti-aircraft projectile!", "x", fact.X, "y", fact.Y, "idx", fIdx)
 			}
 		}
 
@@ -239,17 +283,7 @@ func (g *Game) updateFactories() {
 					}
 				}
 
-				spawned := false
-				for d := 0; d < len(g.drones); d++ {
-					if !g.drones[d].Active {
-						g.drones[d] = Drone{X: fact.X, Y: fact.Y, Active: true, Angle: angle, FactoryIdx: fIdx}
-						spawned = true
-						break
-					}
-				}
-				if !spawned {
-					g.drones = append(g.drones, Drone{X: fact.X, Y: fact.Y, Active: true, Angle: angle, FactoryIdx: fIdx})
-				}
+				g.appendDrone(Drone{X: fact.X, Y: fact.Y, Active: true, Angle: angle, FactoryIdx: fIdx})
 				fact.DronesRemaining--
 				slog.Info("Factory spawned replacement defense drone!", "factory_idx", fIdx, "reserves_remaining", fact.DronesRemaining)
 			}
@@ -321,18 +355,8 @@ func (g *Game) updateTanks() {
 		}
 
 		if tank.Active && tank.SinkingTimer == 0 {
-			if tank.FireCooldown > 0 {
-				tank.FireCooldown--
-			} else if !g.heli.Landed && g.heli.Fuel > 0 && g.heli.Armor > 0 {
-				dxVec := g.heli.X - tank.X
-				dyVec := g.heli.Y - tank.Y
-				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-				if dist > 0 && dist < 40.0 {
-					speed := 2.2
-					g.spawnEnemyBullet(tank.X, tank.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
-					slog.Info("Tank fired flak projectile!", "tank_idx", tIdx, "x", tank.X, "y", tank.Y)
-					tank.FireCooldown = 50 + rand.Intn(40)
-				}
+			if g.tickAAFire(tank.X, tank.Y, &tank.FireCooldown, 40.0, 2.2, 50, 40) {
+				slog.Info("Tank fired flak projectile!", "tank_idx", tIdx, "x", tank.X, "y", tank.Y)
 			}
 		}
 	}
@@ -355,18 +379,8 @@ func (g *Game) updateStaticAAs() {
 		}
 
 		if sa.Active && sa.SinkingTimer == 0 {
-			if sa.FireCooldown > 0 {
-				sa.FireCooldown--
-			} else if !g.heli.Landed && g.heli.Fuel > 0 && g.heli.Armor > 0 {
-				dxVec := g.heli.X - sa.X
-				dyVec := g.heli.Y - sa.Y
-				dist := math.Sqrt(dxVec*dxVec + dyVec*dyVec)
-				if dist > 0 && dist < 45.0 {
-					speed := 2.2
-					g.spawnEnemyBullet(sa.X, sa.Y, (dxVec/dist)*speed, (dyVec/dist)*speed)
-					slog.Info("Static AA fired flak projectile!", "idx", saIdx, "x", sa.X, "y", sa.Y)
-					sa.FireCooldown = 45 + rand.Intn(35)
-				}
+			if g.tickAAFire(sa.X, sa.Y, &sa.FireCooldown, 45.0, 2.2, 45, 35) {
+				slog.Info("Static AA fired flak projectile!", "idx", saIdx, "x", sa.X, "y", sa.Y)
 			}
 		}
 	}

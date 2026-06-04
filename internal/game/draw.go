@@ -412,7 +412,8 @@ func (g *Game) draw() {
 	}
 
 	// A.1b Draw Stealth Drone Speedboats (small, fast, no radar signature)
-	stealthColor := tcell.NewRGBColor(0, 220, 160)
+	stealthColor := tcell.NewRGBColor(160, 160, 160)
+	stealthWake := tcell.NewRGBColor(100, 100, 100)
 	for i := range g.stealthBoats {
 		sb := &g.stealthBoats[i]
 		if !sb.Active {
@@ -420,10 +421,13 @@ func (g *Game) draw() {
 		}
 		sx := int(math.Round(sb.X))
 		sy := int(math.Round(sb.Y))
-		// 3-cell sprite: bow ◄, hull ═, wake ·
+		// 5-cell sprite: bow ◄, deck ▬▬, stern ▐, wake ··
 		g.drawCell(sx, sy, '◄', stealthColor)
-		g.drawCell(sx+1, sy, '═', stealthColor)
-		g.drawCell(sx+2, sy, '·', stealthColor)
+		g.drawCell(sx+1, sy, '▬', stealthColor)
+		g.drawCell(sx+2, sy, '▬', stealthColor)
+		g.drawCell(sx+3, sy, '▐', stealthColor)
+		g.drawCell(sx+4, sy, '·', stealthWake)
+		g.drawCell(sx+5, sy, '·', stealthWake)
 	}
 
 	// A.2 Draw Island Military Factory Fortress
@@ -698,6 +702,13 @@ func (g *Game) drawQuitConfirmation() {
 }
 
 // drawHUD prints diagnostic status metrics and cockpit gauges
+// drawHUDStat draws a label+value pair at x and returns the next x position.
+func (g *Game) drawHUDStat(x, y int, label, value string, labelStyle, valueStyle tcell.Style) int {
+	g.drawString(x, y, label, labelStyle)
+	g.drawString(x+len(label), y, value, valueStyle)
+	return x + len(label) + len(value)
+}
+
 func (g *Game) drawHUD() {
 	hudY := g.height - 6
 	hudStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite)
@@ -729,30 +740,9 @@ func (g *Game) drawHUD() {
 	}
 
 	// Stealth threat alert fires only when the boat is within 120 units of the carrier
-	carrierCX := float64(g.carrier.X + g.carrier.Width/2)
-	carrierCY := float64(g.carrier.Y + g.carrier.Height/2)
-	stealthNear := false
-	for i := range g.stealthBoats {
-		sb := &g.stealthBoats[i]
-		if !sb.Active {
-			continue
-		}
-		dx := sb.X - carrierCX
-		dy := sb.Y - carrierCY
-		if math.Sqrt(dx*dx+dy*dy) < 120.0 {
-			stealthNear = true
-			break
-		}
-	}
-	if stealthNear {
+	if g.stealthNear {
 		if (g.Ticks/4)%2 == 0 {
-			g.drawString(g.width-34, hudY+1, "⚠ STEALTH THREAT: CANNON ONLY ⚠", borderStyle.Foreground(tcell.NewRGBColor(0, 220, 160)).Bold(true))
-		}
-		if g.Ticks%20 == 0 {
-			PlaySound("warning")
-		}
-		if g.Ticks%15 == 0 {
-			PlaySound("speedboat")
+			g.drawString(g.width-34, hudY+1, "⚠ STEALTH THREAT: CANNON ONLY ⚠", borderStyle.Foreground(tcell.NewRGBColor(160, 160, 160)).Bold(true))
 		}
 	}
 
@@ -872,11 +862,7 @@ func (g *Game) drawHUD() {
 
 	offset := 2 + len(statusLabel) + len(statusStr) + 2
 
-	padLabel := " | ALIGN:"
-	g.drawString(offset, hudY+2, padLabel, hudStyle)
-	g.drawString(offset+len(padLabel), hudY+2, alignStr, alignStyle)
-
-	offset += len(padLabel) + len(alignStr)
+	offset = g.drawHUDStat(offset, hudY+2, " | ALIGN:", alignStr, hudStyle, alignStyle)
 
 	boatsRemaining := 0
 	for _, b := range g.boats {
@@ -884,12 +870,7 @@ func (g *Game) drawHUD() {
 			boatsRemaining++
 		}
 	}
-	boatsLabel := " | BOATS:"
-	g.drawString(offset, hudY+2, boatsLabel, hudStyle)
-	boatsValStr := fmt.Sprintf("%d", boatsRemaining)
-	g.drawString(offset+len(boatsLabel), hudY+2, boatsValStr, hudStyle.Foreground(tcell.ColorLightCyan))
-
-	offset += len(boatsLabel) + len(boatsValStr)
+	offset = g.drawHUDStat(offset, hudY+2, " | BOATS:", fmt.Sprintf("%d", boatsRemaining), hudStyle, hudStyle.Foreground(tcell.ColorLightCyan))
 
 	factoriesRemaining := 0
 	for _, f := range g.factories {
@@ -897,12 +878,7 @@ func (g *Game) drawHUD() {
 			factoriesRemaining++
 		}
 	}
-	factoriesLabel := " | FACTORIES:"
-	g.drawString(offset, hudY+2, factoriesLabel, hudStyle)
-	factoriesValStr := fmt.Sprintf("%d", factoriesRemaining)
-	g.drawString(offset+len(factoriesLabel), hudY+2, factoriesValStr, hudStyle.Foreground(tcell.ColorOrange))
-
-	offset += len(factoriesLabel) + len(factoriesValStr)
+	offset = g.drawHUDStat(offset, hudY+2, " | FACTORIES:", fmt.Sprintf("%d", factoriesRemaining), hudStyle, hudStyle.Foreground(tcell.ColorOrange))
 
 	lockLabel := " | LOCK:"
 	g.drawString(offset, hudY+2, lockLabel, hudStyle)
@@ -944,9 +920,7 @@ func (g *Game) drawHUD() {
 		lockColor = tcell.ColorGreen
 	}
 	lockStyle := hudStyle.Foreground(lockColor).Bold(true)
-	g.drawString(offset+len(lockLabel), hudY+2, lockStr, lockStyle)
-
-	offset += len(lockLabel) + len(lockStr)
+	offset = g.drawHUDStat(offset, hudY+2, lockLabel, lockStr, hudStyle, lockStyle)
 
 	// Display row H-1: Control Instructions
 	controlStyle := hudStyle.Foreground(tcell.ColorSilver)

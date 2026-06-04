@@ -159,5 +159,4 @@ For more in-depth technical information, refer to the following documents:
 *   **[Project Roadmap](PROJECT.md)**: Current status and future development plans.
 *   **[Package Documentation](PKG.md)**: Overview of the project's Go packages.
 *   **[Known Issues](ISSUES.md)**: Tracking of bugs and development hurdles.
-*   **[Modular Interface Refactor](modular-interface-refactor.md)**: Documentation of the modular refactoring process.
 

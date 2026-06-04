@@ -6,10 +6,7 @@ This file tracks both functional bugs and structural/refactoring concerns.
 
 ### Open
 
-#### 1.1 `resetRound` hard-codes boat positions and speeds as duplicated literals
-**File:** `physics.go` (`resetRound` function)
-
-Reset values (`X=15/20/25`, `VX=0.05/0.04/0.06`) are copied from `game.go` boat initialization and will silently diverge if the initial values change. The sign-preservation logic also reads the current `VX` sign at reset time; if a boundary bounce just flipped the sign in the same tick, the boat resets pointing into the wall it just left, causing an immediate double-bounce. Restore from the `initialBoats` snapshot already stored in the `Game` struct instead.
+*(none)*
 
 ---
 
@@ -30,6 +27,9 @@ Reset values (`X=15/20/25`, `VX=0.05/0.04/0.06`) are copied from `game.go` boat 
 #### ~~Missile dodge `continue` scans the next player missile instead of the next bullet~~
 **Fixed:** The dodge path in `collision.go` uses `break` to stop checking after a dodge attempt.
 
+#### ~~`resetRound` hard-codes boat positions and speeds as duplicated literals~~
+**Fixed:** `resetRound` restores boat position, health, and velocity from the `initialBoats` snapshot (`physics.go`). No magic literals remain.
+
 #### ~~Boat and tank speed scaling is unbounded across wave resets~~
 **Fixed:** `checkWaveCompletion` in `physics.go` caps boat `VX` and tank `VY`/`VX` at ±2.0 after each wave multiplier.
 
@@ -47,27 +47,9 @@ Code review findings ranked by maintenance impact. All confirmed via static anal
 
 ---
 
-### 2.1 Drone Spawn Pattern Duplicated (2 Sites)
+### ~~2.1 Drone Spawn Pattern Duplicated (2 Sites)~~ — RESOLVED
 
-**Files:** `enemies.go:180` (factory drone replenishment), `physics.go:322` (carrier drone replenishment in `replenishCarrierDrones`)
-
-> **Scope reduced.** Bullet and missile spawning no longer use the inline pattern — they go through `spawnEnemyBullet`/`spawnEnemyMissile`/`spawnPlayerBullet`/`spawnPlayerMissile`/`spawnCarrierMissile`/`spawnCountermeasureBullet`, which wrap the shared `appendBullet`/`appendMissile` allocator in `projectiles.go`. Only **drone** spawning still inlines the "find inactive slot or append" loop.
-
-```go
-spawned := false
-for d := 0; d < len(g.drones); d++ {
-    if !g.drones[d].Active {
-        g.drones[d] = Drone{...}
-        spawned = true
-        break
-    }
-}
-if !spawned {
-    g.drones = append(g.drones, Drone{...})
-}
-```
-
-**Fix:** Add an `appendDrone(Drone)` helper alongside `appendBullet`/`appendMissile` in `projectiles.go` (or a `spawnDrone` wrapper) and call it from both sites.
+**Fixed:** `appendDrone(Drone)` added to `projectiles.go` alongside `appendBullet`/`appendMissile`. Both inline `spawned := false` loops replaced in `enemies.go` (factory replenishment) and `physics.go` (carrier replenishment).
 
 ---
 
@@ -83,62 +65,21 @@ Factory-specific drone cleanup is handled by the caller in `updateFactories` aft
 
 ---
 
-### 2.3 HUD Row H-2 Uses Fragile Manual Offset Accumulation (6 Repetitions)
+### ~~2.3 HUD Row H-2 Uses Fragile Manual Offset Accumulation~~ — RESOLVED
 
-**File:** `draw.go:796`
-
-Every metric in the HUD status row manually tracks its x-position:
-```go
-offset += len(boatsLabel) + len(boatsValStr)
-// ... then next metric ...
-offset += len(factoriesLabel) + len(factoriesValStr)
-// ... repeated 6 times
-```
-
-Any label string change silently shifts all subsequent metrics. Reordering or inserting a metric requires updating all downstream offset math.
-
-**Fix:** Extract a helper:
-```go
-func (g *Game) drawHUDStat(x, y int, label, value string, labelStyle, valueStyle tcell.Style) int {
-    g.drawString(x, y, label, labelStyle)
-    g.drawString(x+len(label), y, value, valueStyle)
-    return x + len(label) + len(value)
-}
-// Usage: offset = g.drawHUDStat(offset, hudY+2, "   |   BOATS: ", boatsValStr, hudStyle, cyanStyle)
-```
+**Fixed:** `drawHUDStat(x, y, label, value, labelStyle, valueStyle) int` added to `draw.go`. ALIGN, BOATS, FACTORIES, and LOCK entries now call it; `offset +=` arithmetic eliminated.
 
 ---
 
-### 2.4 `boatsSunk` Is Dead State — Tracked But Never Displayed
+### ~~2.4 `boatsSunk` Is Dead State~~ — RESOLVED
 
-**File:** `game.go:37`, incremented at `enemies.go:32` and `collision.go:136`, reset at `physics.go:576`
-
-The `boatsSunk` counter was previously shown in the HUD ("BOATS SUNK: N") but that display was removed when the HUD was updated to show live counts instead. The field and both increment sites were not cleaned up.
-
-**Fix:** Remove the `boatsSunk` field from the `Game` struct, and remove the two increment sites and the reset in `resetRound()`. If a cumulative kill count is wanted in the future, re-add it intentionally.
+**Fixed:** Field removed from `game.go`, both increment sites removed from `enemies.go` and `collision.go`, reset removed from `physics.go`.
 
 ---
 
-### 2.5 Magic Constant `6` (World Water Left Edge) Should Be Named
+### ~~2.5 Magic Constant `6` (World Water Left Edge)~~ — RESOLVED
 
-**File:** `enemies.go:74,77`
-
-The value `6` appears twice in patrol boundary logic with no explanation:
-```go
-if boat.PatrolMinX > 6 {
-    boat.PatrolMinX -= 0.02
-    if boat.PatrolMinX < 6 {
-        boat.PatrolMinX = 6
-    }
-}
-```
-
-This represents the minimum X coordinate boats can reach (water left edge, just clear of the world boundary). It is separate from the carrier position and the coastline threshold, and its meaning is not obvious.
-
-**Fix:**
-```go
-const waterMinX = 6.0
-```
+**Fixed:** `const waterMinX = 6.0` added to `enemies.go`; all three bare `6` references replaced.
 
 ---
 

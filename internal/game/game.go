@@ -35,9 +35,10 @@ type Game struct {
 	drones         []Drone
 	tanks          []Tank
 	staticAAs      []StaticAA
-	stealthBoats   []StealthBoat
+	stealthBoats      []StealthBoat
+	stealthSpawnAt    int  // tick at which the next speedboat launches (0 = none pending)
+	stealthNear       bool // true when a stealth boat is within warning distance of the carrier
 	explosions     []Explosion
-	boatsSunk      int
 	Lives          int
 	Ticks          int
 	lockedBoat     *Boat
@@ -83,9 +84,9 @@ func New(screen tcell.Screen) *Game {
 	}
 
 	boats := []Boat{
-		{X: 15, Y: float64(worldHeight - 10), VX: 0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 1500},
+		{X: 15, Y: float64(worldHeight - 10), VX: -0.05, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 1500},
 		{X: 20, Y: 6, VX: -0.04, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 2000},
-		{X: 25, Y: float64(worldHeight - 7), VX: 0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 2500},
+		{X: 25, Y: float64(worldHeight - 7), VX: -0.06, Health: 9, MaxHealth: 9, Active: true, MissileCooldown: 2500},
 	}
 
 	factories := []Factory{

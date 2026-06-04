@@ -6,6 +6,14 @@ import (
 	"math/rand"
 )
 
+// aabb (axis-aligned bounding box) reports whether point A is close enough to point B
+// to count as a hit. hw and hh are the half-widths of the box: a hit registers when A
+// is within hw cells horizontally AND hh cells vertically of B. All coordinates are
+// in world-space float cells, matching the VX/VY movement units used throughout the game.
+func aabb(ax, ay, bx, by, hw, hh float64) bool {
+	return math.Abs(ax-bx) < hw && math.Abs(ay-by) < hh
+}
+
 // killHeli decrements the per-wave life count and either starts the respawn timer or
 // ends the game when lives are exhausted.
 func (g *Game) killHeli(hasIncoming bool) {
@@ -82,7 +90,7 @@ func (g *Game) checkStealthBoatVsCarrier() {
 		if !sb.Active {
 			continue
 		}
-		if math.Abs(sb.X-carrierCX) < halfW && math.Abs(sb.Y-carrierCY) < halfH {
+		if aabb(sb.X, sb.Y, carrierCX, carrierCY, halfW, halfH) {
 			sb.Active = false
 			slog.Error("STEALTH DRONE SPEEDBOAT RAMMED THE CARRIER! CARRIER DESTROYED!")
 			
@@ -169,7 +177,7 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 	if g.heli.Landed || g.heli.Armor <= 0 {
 		return
 	}
-	if math.Abs(bullet.X-g.heli.X) < 3.5 && math.Abs(bullet.Y-g.heli.Y) < 2.5 {
+	if aabb(bullet.X, bullet.Y, g.heli.X, g.heli.Y, 3.5, 2.5) {
 		bullet.Active = false
 		g.heli.Armor -= 15.0
 		slog.Info("Enemy projectile hit Player", "damage", 15.0, "remaining_armor", g.heli.Armor)
@@ -207,7 +215,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 		if !boat.Active {
 			continue
 		}
-		if math.Abs(bullet.X-boat.X) < 5.5 && math.Abs(bullet.Y-boat.Y) < 1.5 {
+		if aabb(bullet.X, bullet.Y, boat.X, boat.Y, 5.5, 1.5) {
 			bullet.Active = false
 			if boat.SinkingTimer == 0 {
 				boat.Health--
@@ -217,8 +225,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 
 				if boat.Health <= 0 {
 					boat.Active = false
-					g.boatsSunk++
-					slog.Info("Boat sunk by cannon round", "boat_idx", j, "total_sunk", g.boatsSunk)
+					slog.Info("Boat sunk by cannon round", "boat_idx", j)
 					for ddx := -5; ddx <= 5; ddx++ {
 						for ddy := -1; ddy <= 1; ddy++ {
 							g.explosions = append(g.explosions, Explosion{X: int(math.Round(boat.X)) + ddx, Y: int(math.Round(boat.Y)) + ddy, Age: 0})
@@ -240,7 +247,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 		if !sb.Active {
 			continue
 		}
-		if math.Abs(bullet.X-sb.X) < 2.0 && math.Abs(bullet.Y-sb.Y) < 1.0 {
+		if aabb(bullet.X, bullet.Y, sb.X, sb.Y, 4.0, 1.0) {
 			bullet.Active = false
 			sb.Active = false
 			slog.Info("Stealth drone speedboat destroyed by cannon!", "idx", i)
@@ -256,7 +263,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 		if !drone.Active {
 			continue
 		}
-		if math.Abs(bullet.X-drone.X) < 1.5 && math.Abs(bullet.Y-drone.Y) < 1.2 {
+		if aabb(bullet.X, bullet.Y, drone.X, drone.Y, 1.5, 1.2) {
 			bullet.Active = false
 			drone.Active = false
 			slog.Info("Player shot down an Air Defense Drone!", "drone_idx", d)
@@ -270,7 +277,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 	for fIdx := range g.factories {
 		fact := &g.factories[fIdx]
 		if fact.Active && fact.SinkingTimer == 0 {
-			if math.Abs(bullet.X-fact.X) < 8.5 && math.Abs(bullet.Y-fact.Y) < 2.5 {
+			if aabb(bullet.X, bullet.Y, fact.X, fact.Y, 8.5, 2.5) {
 				bullet.Active = false
 				fact.Health--
 				slog.Info("Player bullet hit Factory", "idx", fIdx, "health", fact.Health, "max_health", fact.MaxHealth)
@@ -290,7 +297,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 	for tIdx := range g.tanks {
 		tank := &g.tanks[tIdx]
 		if tank.Active && tank.SinkingTimer == 0 {
-			if math.Abs(bullet.X-tank.X) < 2.5 && math.Abs(bullet.Y-tank.Y) < 1.5 {
+			if aabb(bullet.X, bullet.Y, tank.X, tank.Y, 2.5, 1.5) {
 				bullet.Active = false
 				tank.Health--
 				slog.Info("Player bullet hit Tank", "tank_idx", tIdx, "health", tank.Health, "max_health", tank.MaxHealth)
@@ -310,7 +317,7 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 	for saIdx := range g.staticAAs {
 		sa := &g.staticAAs[saIdx]
 		if sa.Active && sa.SinkingTimer == 0 {
-			if math.Abs(bullet.X-sa.X) < 1.5 && math.Abs(bullet.Y-sa.Y) < 1.5 {
+			if aabb(bullet.X, bullet.Y, sa.X, sa.Y, 1.5, 1.5) {
 				bullet.Active = false
 				sa.Health--
 				slog.Info("Player bullet hit Static AA", "idx", saIdx, "health", sa.Health, "max_health", sa.MaxHealth)
@@ -386,7 +393,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 		if !boat.Active {
 			continue
 		}
-		if math.Abs(m.X-boat.X) < 5.5 && math.Abs(m.Y-boat.Y) < 1.5 {
+		if aabb(m.X, m.Y, boat.X, boat.Y, 5.5, 1.5) {
 			m.Active = false
 			if boat.SinkingTimer == 0 {
 				boat.SinkingTimer = 45
@@ -405,7 +412,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 	for fIdx := range g.factories {
 		fact := &g.factories[fIdx]
 		if fact.Active && fact.SinkingTimer == 0 {
-			if math.Abs(m.X-fact.X) < 8.5 && math.Abs(m.Y-fact.Y) < 2.5 {
+			if aabb(m.X, m.Y, fact.X, fact.Y, 8.5, 2.5) {
 				m.Active = false
 				fact.Health -= 10
 				slog.Info("Player guided missile hit Factory", "idx", fIdx, "health", fact.Health, "max_health", fact.MaxHealth)
@@ -425,7 +432,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 	for tIdx := range g.tanks {
 		tank := &g.tanks[tIdx]
 		if tank.Active && tank.SinkingTimer == 0 {
-			if math.Abs(m.X-tank.X) < 2.5 && math.Abs(m.Y-tank.Y) < 1.5 {
+			if aabb(m.X, m.Y, tank.X, tank.Y, 2.5, 1.5) {
 				m.Active = false
 				tank.SinkingTimer = 45
 				tank.Health = 0
@@ -441,7 +448,7 @@ func (g *Game) checkPlayerMissileVsTargets(m *Missile) {
 	for saIdx := range g.staticAAs {
 		sa := &g.staticAAs[saIdx]
 		if sa.Active && sa.SinkingTimer == 0 {
-			if math.Abs(m.X-sa.X) < 1.5 && math.Abs(m.Y-sa.Y) < 1.5 {
+			if aabb(m.X, m.Y, sa.X, sa.Y, 1.5, 1.5) {
 				m.Active = false
 				sa.SinkingTimer = 45
 				sa.Health = 0
@@ -466,7 +473,7 @@ func (g *Game) checkPlayerBulletsVsEnemyMissiles() {
 			if !m.Active || !m.IsEnemy {
 				continue
 			}
-			if math.Abs(bullet.X-m.X) < 1.5 && math.Abs(bullet.Y-m.Y) < 1.5 {
+			if aabb(bullet.X, bullet.Y, m.X, m.Y, 1.5, 1.5) {
 				bullet.Active = false
 				m.Active = false
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(m.X)), Y: int(math.Round(m.Y)), Age: 0})
@@ -490,7 +497,7 @@ func (g *Game) checkEnemyBulletsVsPlayerMissiles() {
 			if !m.Active || m.IsEnemy {
 				continue
 			}
-			if math.Abs(bullet.X-m.X) < 1.5 && math.Abs(bullet.Y-m.Y) < 1.5 {
+			if aabb(bullet.X, bullet.Y, m.X, m.Y, 1.5, 1.5) {
 				if rand.Float64() < MissileDodgeChance {
 					slog.Info("Missile successfully dodged enemy anti-aircraft projectile!", "missile_idx", j, "bullet_idx", i, "dodge_chance", MissileDodgeChance)
 					break

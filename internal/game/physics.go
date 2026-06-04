@@ -292,8 +292,8 @@ func (g *Game) updateCamera() {
 	hy := int(math.Round(g.heli.Y))
 
 	// Margin values (20% of screen size)
-	marginW := int(float64(g.width) * 0.20)
-	marginH := int(float64(g.height-6) * 0.20)
+	marginW := int(float64(g.width) * 0.30)
+	marginH := int(float64(g.height-6) * 0.30)
 
 	// Keep margins reasonable
 	if marginW < 5 {
@@ -414,17 +414,7 @@ func (g *Game) replenishCarrierDrones() {
 	cx := float64(g.carrier.X + g.carrier.Width/2)
 	cy := float64(g.carrier.Y + g.carrier.Height/2)
 
-	spawned := false
-	for d := 0; d < len(g.drones); d++ {
-		if !g.drones[d].Active {
-			g.drones[d] = Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1}
-			spawned = true
-			break
-		}
-	}
-	if !spawned {
-		g.drones = append(g.drones, Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1})
-	}
+	g.appendDrone(Drone{X: cx, Y: cy, Active: true, Angle: angle, FactoryIdx: -1})
 	slog.Info("Carrier repaired/spawned defensive carrier drone!")
 }
 
@@ -664,7 +654,7 @@ func (g *Game) resetRound() {
 	g.bullets = g.bullets[:0]
 	g.missiles = g.missiles[:0]
 
-	g.boatsSunk = 0
+
 	for i := range g.boats {
 		boat := &g.boats[i]
 		initial := g.initialBoats[i]
@@ -716,6 +706,11 @@ func (g *Game) resetRound() {
 	}
 
 	g.resetStaticAAs(true)
+
+	g.stealthSpawnAt = 0
+	for i := range g.stealthBoats {
+		g.stealthBoats[i].Active = false
+	}
 }
 
 func (g *Game) initStaticAAs() {
