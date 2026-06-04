@@ -12,7 +12,7 @@ func (g *Game) handleKeyPress(ev *tcell.EventKey) {
 	key := ev.Key()
 	ch := ev.Rune()
 
-	if g.heli.Armor <= 0 || g.heli.RespawnTimer > 0 {
+	if g.heli.Armor <= 0 || g.heli.RespawnTimer > 0 || g.heli.ReturningToCarrier || g.carrierDestroying {
 		return
 	}
 

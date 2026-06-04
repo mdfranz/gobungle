@@ -1,10 +1,10 @@
-![Gobungle Carrier Damage State](burning.png)
+![Gobungle Carrier Damage State](retro-osprey.png)
 
-# 🚁 Gobungle: Tactical Helicopter Combat & Carrier Defense
+# 🚁 Gobungle: V-22 Osprey Tactical Combat & Carrier Defense
 
 Gobungle is a terminal-based tactical combat game written in Go using the `tcell` library. 
 
-Command a state-of-the-art attack helicopter, defend your mothership aircraft carrier against rogue warships, and execute surgical lock-on guided missile strikes!
+Command a V-22 Osprey tiltrotor attack aircraft, defend your mothership aircraft carrier against rogue warships, and execute surgical lock-on guided missile strikes!
 
 Inspired by Will Wright's legendary 1984 8-bit classic [Raid on Bungeling Bay](https://en.wikipedia.org/wiki/Raid_on_Bungeling_Bay), Gobungle adapts the iconic helicopter carrier defense formula into a fast-paced command line experience.
 
@@ -17,22 +17,26 @@ Inspired by Will Wright's legendary 1984 8-bit classic [Raid on Bungeling Bay](h
 
 Your mission is to seek out and destroy three heavily armed rogue gunboats patrolling the ocean and the **fortress factory island**, while protecting your home aircraft carrier.
 
+### 🚁 The V-22 Osprey
+* **Tiltrotor Aircraft**: You pilot a V-22 Osprey attack variant — a military tiltrotor with 8-directional animated sprites showing rotor nacelles, fuselage, and directional thrust. The `*` rotor pods cycle through `|`, `/`, `-`, `\` animation frames as you fly.
+* **Directional Sprites**: The Osprey's 7×5 sprite rotates through North, NE, East, SE, South, SW, West, and NW headings, with the fuselage, rotor arms, and direction indicator changing shape for each facing.
+
 ### 🎥 Scrolling World & Camera System
 * **Expanded Playfield**: The game world is larger than your terminal window (2x width and 2x height), providing a vast theater of operations.
-* **Dynamic Camera**: A sophisticated "dead-zone" camera system follows your helicopter as you fly. The camera stays centered on your aircraft but allows for minor movement before scrolling, ensuring you always have a clear view of the surrounding airspace and terrain.
+* **Dynamic Camera**: A sophisticated "dead-zone" camera system follows the Osprey as you fly. The camera stays centered on your aircraft but allows for minor movement before scrolling, ensuring you always have a clear view of the surrounding airspace and terrain.
 * **World Boundaries**: The world is bounded, and the camera automatically clamps to the edges of the map, preventing you from flying into the "void".
 
 ### ⚓ The Aircraft Carrier (Mothership)
 * **Your Safe Haven**: The carrier is marked by a yellow deck with an **`H`** landing pad. 
-* **Replenishment**: Landing on the carrier pad slowly **refuels** your helicopter, **repairs** your armor, **re-arms** your guided missiles (up to 4 capacity), **repairs the carrier's own health**, and slowly **replenishes the carrier's defensive orbiting drones** (up to 2 concurrent drones).
+* **Replenishment**: Landing on the carrier pad slowly **refuels** the Osprey, **repairs** your armor, **re-arms** your guided missiles (up to 4 capacity), **repairs the carrier's own health**, and slowly **replenishes the carrier's defensive orbiting drones** (up to 2 concurrent drones).
 * **Defend at All Costs**: Active enemy gunboats periodically launch powerful guided missiles targeting the center of your carrier deck. If the carrier's health drops to 0%, the round is lost and reset.
 * **Carrier Defense Drones**: The carrier is equipped with **2 active defensive drones** orbiting the carrier. They act as a close-in defense shield, intercepting incoming enemy guided missiles in mid-air and sacrificing themselves to protect your mothership. When lost, they can be slowly rebuilt by landing on the carrier deck (1 drone every 100 ticks).
-* **Advanced Respawn Logistics**: If your helicopter is shot down, a multi-second recovery sequence begins. You'll see secondary explosions at the crash site before the camera automatically re-centers on the carrier's landing pad, where a fresh aircraft is prepped for immediate takeoff. Any incoming missiles currently targeting the carrier will extend this respawn delay, simulating the tactical difficulty of a hot-zone extraction.
+* **Advanced Respawn Logistics**: If the Osprey is shot down, a multi-second recovery sequence begins. You'll see secondary explosions at the crash site before the camera automatically re-centers on the carrier's landing pad, where a fresh aircraft is prepped for immediate takeoff. Any incoming missiles currently targeting the carrier will extend this respawn delay, simulating the tactical difficulty of a hot-zone extraction.
 
 ### 🏝️ The Enemy Bay Coastline & 3 Military Factories
 * **Bay Coastline Landmass**: Replaces the single middle-right island with a massive, procedurally generated coastline wrapping the playfield on the North, East, and South. A 3-cell sandy beach frames the shoreline, transitioning into a lush, grassy interior.
 * **Three Strategic Factories**: There are **3 independent military factories** distributed across the coastland (at Northern, Eastern, and Southern sectors). Each factory has its own health pool (15 HP), unique warning beacons flashing dynamically out of phase, and independent dual industrial smokestacks billowing smoke.
-* **Fortress Flak AA**: Each active factory actively defends itself by firing periodic long-range anti-aircraft flak projectiles at the helicopter, making coastal penetrations highly tactical.
+* **Fortress Flak AA**: Each active factory actively defends itself by firing periodic long-range anti-aircraft flak projectiles at the Osprey, making coastal penetrations highly tactical.
 * **Sinking & Burning Sequence**: When any factory's HP is reduced to 0, it enters a 45-tick delayed burning destruction phase, where fire base flame characters (`▲`, `☼`) flicker on its structure and generate thick ash smoke, followed by a final massive shockwave explosion.
 
 ### 🛡️ Air Defense Drones (Guided Missile Hard-Counter)
@@ -51,8 +55,18 @@ The visual state of your carrier dynamically reflects its health (0% - 100%):
 
 ### ⚔️ Combat & Interception
 * **Aerial Cannons**: Your high-velocity cannon bullets fly up to a range of 35 cells. Use them to shred gunboats, destroy air-defense drones, or **manually intercept and shoot down incoming enemy guided missiles** in mid-air to protect your carrier!
+* **Cannon Overheating**: Rapid sustained fire builds heat in the cannon barrel. Fire the cannon 4 times in quick succession and it **jams for ~2.4 seconds** while the barrel cools. The Cockpit HUD's `CANNON:[████░░░░░░]` heat bar turns orange when warm and red when critical — `JAMMED` replaces the bar when it locks up. Pace your fire to keep the cannon operational in a knife-fight.
 * **Guided Missiles**: Fire high-impact guided missiles at locked gunboats or the factory. Targets must be within a ±45-degree forward field-of-view aperture. Fired missiles start at speed 0.5 and accelerate up to speed 5.0, tracking their targets continuously.
 * **Enemy Anti-Air (AA)**: Gunboats defend themselves with rapid-fire standard AA flak (range 55) and launch guided missiles directly targeting your carrier's flight deck.
+
+### 🚤 Stealth Drone Speedboats
+* **Radar-Invisible Threat**: High-speed stealth drone speedboats (`◄ ═ ·`) launch from the coastline and race directly toward your carrier. They are **completely invisible to the radar** — you must spot them visually.
+* **Instant Kill**: If a stealth boat reaches the carrier deck, it triggers an **instant game-over** — no damage, no warning, just carrier lost. They are the highest-priority intercept target in the game.
+* **Cannon Only**: Stealth boats cannot be locked by guided missiles. Use your **cannon exclusively** to intercept them. Watch for the flashing `⚠ STEALTH THREAT: CANNON ONLY ⚠` HUD alert (in teal) when a stealth boat closes within 120 units of the carrier.
+
+### 🛡️ Land Forces
+* **Patrolling Tanks**: Armored tanks patrol road networks across the coastland interior, firing AA flak at the Osprey when in range. Destroy them with cannon fire or guided missiles.
+* **Static AA Emplacements**: Fixed anti-aircraft guns (`^`) are dug into the coastline and appear on radar. They fire automatically at any Osprey in range, requiring altitude management or suppression before approaching the shore.
 
 ---
 
@@ -115,14 +129,20 @@ sudo pacman -S pkgconf alsa-lib
 
 ## 🖥️ Cockpit HUD Display
 
-Your helicopter features an advanced real-time heads-up display split at the bottom of the screen:
+The Osprey's advanced real-time heads-up display occupies the bottom of the screen, with an integrated radar panel on the right:
 ```text
-CARRIER: [████████░░] 75%  |  ARMOR: [██████████] 100%  |  FUEL: [██████████] 100%
-GPS: (124, 45) | SPEED: 110 KTS | HEADING: 90° (E) | ALTITUDE: 450 FT | FUEL: [██████████]
+🚁 COCKPIT HUD PANEL (WAVE 2) 🚁 ════════════════════╦═════════════════════╗
+LOCK: BOAT [██████] | MISSILES: ◆◆◆◇ | LIVES: ♥♥♥♥♥    ║      RADAR        ║
+GPS: (124, 45) | SPEED: 110 KTS | HEADING: 90° (E)       ║  ~   ■           ║
+ARMOR:[██████████] | CARRIER:[████████░░] | CANNON:[████░░]  ║       +          ║
+                                                             ╚══════════════════╝
 ⚠️ WARNING: INCOMING MISSILE ⚠️
 ```
+* **Radar Panel**: A live tactical radar (100-unit range) renders in the top-right corner of the HUD. Boats appear as `~` (cyan), factories as `■` (red), static AA as `^` (yellow), the carrier as `H` (white), and your Osprey as `+` (green). **Stealth boats are invisible on radar.** Enemy missiles have a 50% detection probability, simulating radar uncertainty.
+* **Cannon Heat Bar**: The `CANNON:[████░░░░░░]` gauge shows barrel temperature — green when cool, orange when warm (≥50% heat), red when critical (≥80% heat), and `JAMMED` in red when overheated and locked.
 * **Blinking HUD & Audio Warnings**: The dashboard flashes a bright red `⚠️ WARNING: INCOMING MISSILE ⚠️` alert and emits an audible "ping" whenever an active enemy missile is flying toward your carrier deck, giving you time to race back and intercept it!
-* **GPS Telemetry**: The HUD now provides real-time GPS coordinates, essential for navigating the expanded scrolling world and locating strategic targets across the vast coastline.
+* **Stealth Threat Alert**: A teal `⚠ STEALTH THREAT: CANNON ONLY ⚠` warning flashes when a stealth drone speedboat closes within 120 units of the carrier.
+* **GPS Telemetry**: Real-time GPS coordinates essential for navigating the expanded scrolling world and locating strategic targets across the vast coastline.
 * **Lock Telemetry**: The lock display is fully target-aware, showing `BOAT` or `FACTORY` when a target falls inside your seeker cone, confirming locking status before missile launch.
 
 ---

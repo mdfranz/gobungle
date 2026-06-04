@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math"
+	"math/rand"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -120,25 +121,36 @@ func (g *Game) draw() {
 				rightTaper := (cy == 0 && cx >= g.carrier.Width-4) || (cy == g.carrier.Height-1 && cx >= g.carrier.Width-4)
 
 				if !leftTaper && !rightTaper {
-					// Mid-deck runway stripes
-					if cy == g.carrier.Height/2 && cx > 3 && cx < g.carrier.Width-3 && cx%3 != 0 {
-						r = '-'
-						style = style.Foreground(tcell.ColorNames["yellow"])
-					}
+					// Add dramatic burning fire effects if the carrier is being destroyed
+					if g.carrierDestroying && rand.Intn(100) < 40 {
+						if rand.Intn(2) == 0 {
+							r = '█'
+							style = style.Background(tcell.ColorRed).Foreground(tcell.ColorOrange)
+						} else {
+							r = '░'
+							style = style.Background(tcell.ColorOrange).Foreground(tcell.ColorYellow)
+						}
+					} else {
+						// Mid-deck runway stripes
+						if cy == g.carrier.Height/2 && cx > 3 && cx < g.carrier.Width-3 && cx%3 != 0 {
+							r = '-'
+							style = style.Foreground(tcell.ColorNames["yellow"])
+						}
 
-					// Draw landing circle & H pad
-					padX := g.carrier.Width / 3
-					padY := g.carrier.Height / 2
-					if cx >= padX-2 && cx <= padX+2 && cy >= padY-1 && cy <= padY+1 {
-						style = style.Foreground(tcell.ColorNames["yellow"])
-						if cx == padX && cy == padY {
-							r = 'H'
-						} else if cx == padX-2 || cx == padX+2 {
-							r = '|'
-						} else if cy == padY-1 {
-							r = '¯'
-						} else if cy == padY+1 {
-							r = '_'
+						// Draw landing circle & H pad
+						padX := g.carrier.Width / 3
+						padY := g.carrier.Height / 2
+						if cx >= padX-2 && cx <= padX+2 && cy >= padY-1 && cy <= padY+1 {
+							style = style.Foreground(tcell.ColorNames["yellow"])
+							if cx == padX && cy == padY {
+								r = 'H'
+							} else if cx == padX-2 || cx == padX+2 {
+								r = '|'
+							} else if cy == padY-1 {
+								r = '¯'
+							} else if cy == padY+1 {
+								r = '_'
+							}
 						}
 					}
 				}
@@ -397,6 +409,21 @@ func (g *Game) draw() {
 			g.drawCell(bx+4, by+1, '█', boatColor)
 			g.drawCell(bx+5, by+1, '▶', boatColor)
 		}
+	}
+
+	// A.1b Draw Stealth Drone Speedboats (small, fast, no radar signature)
+	stealthColor := tcell.NewRGBColor(0, 220, 160)
+	for i := range g.stealthBoats {
+		sb := &g.stealthBoats[i]
+		if !sb.Active {
+			continue
+		}
+		sx := int(math.Round(sb.X))
+		sy := int(math.Round(sb.Y))
+		// 3-cell sprite: bow ◄, hull ═, wake ·
+		g.drawCell(sx, sy, '◄', stealthColor)
+		g.drawCell(sx+1, sy, '═', stealthColor)
+		g.drawCell(sx+2, sy, '·', stealthColor)
 	}
 
 	// A.2 Draw Island Military Factory Fortress
@@ -701,6 +728,34 @@ func (g *Game) drawHUD() {
 		}
 	}
 
+	// Stealth threat alert fires only when the boat is within 120 units of the carrier
+	carrierCX := float64(g.carrier.X + g.carrier.Width/2)
+	carrierCY := float64(g.carrier.Y + g.carrier.Height/2)
+	stealthNear := false
+	for i := range g.stealthBoats {
+		sb := &g.stealthBoats[i]
+		if !sb.Active {
+			continue
+		}
+		dx := sb.X - carrierCX
+		dy := sb.Y - carrierCY
+		if math.Sqrt(dx*dx+dy*dy) < 120.0 {
+			stealthNear = true
+			break
+		}
+	}
+	if stealthNear {
+		if (g.Ticks/4)%2 == 0 {
+			g.drawString(g.width-34, hudY+1, "⚠ STEALTH THREAT: CANNON ONLY ⚠", borderStyle.Foreground(tcell.NewRGBColor(0, 220, 160)).Bold(true))
+		}
+		if g.Ticks%20 == 0 {
+			PlaySound("warning")
+		}
+		if g.Ticks%15 == 0 {
+			PlaySound("speedboat")
+		}
+	}
+
 	// Clear background of lines H-3 through H-1 plus the 2 new radar rows
 	for dy := 1; dy <= 5; dy++ {
 		for x := 0; x < g.width; x++ {
@@ -789,6 +844,26 @@ func (g *Game) drawHUD() {
 		}
 	}
 	g.drawString(2+len(instrumentText)+len(fuelText)+len(ammoLabel), hudY+1, ammoStr, ammoStyle)
+
+	// Display lives remaining
+	livesLabel := " | LVS:"
+	livesOffset := 2 + len(instrumentText) + len(fuelText) + len(ammoLabel) + len(ammoStr)
+	g.drawString(livesOffset, hudY+1, livesLabel, hudStyle)
+	livesStr := ""
+	for i := 0; i < 5; i++ {
+		if i < g.Lives {
+			livesStr += "♥ "
+		} else {
+			livesStr += "· "
+		}
+	}
+	livesColor := tcell.ColorGreen
+	if g.Lives <= 2 {
+		livesColor = tcell.ColorRed
+	} else if g.Lives <= 3 {
+		livesColor = tcell.ColorOrange
+	}
+	g.drawString(livesOffset+len(livesLabel), hudY+1, livesStr, hudStyle.Foreground(livesColor).Bold(true))
 
 	// Display row H-2: Status Metrics
 	statusLabel := "FLIGHT STATUS: "
@@ -1017,6 +1092,15 @@ func (g *Game) drawRadar(hudY int) {
 	for i := range g.staticAAs {
 		if g.staticAAs[i].Active {
 			plotDot(g.staticAAs[i].X, g.staticAAs[i].Y, '^', aaStyle)
+		}
+	}
+
+	// Enemy missiles detected 50% of the time (radar uncertainty)
+	missileStyle := tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorRed).Bold(true)
+	for i := range g.missiles {
+		m := &g.missiles[i]
+		if m.Active && m.IsEnemy && rand.Intn(2) == 0 {
+			plotDot(m.X, m.Y, '!', missileStyle)
 		}
 	}
 

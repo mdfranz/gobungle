@@ -92,6 +92,66 @@ func (g *Game) updateBoats() {
 	}
 }
 
+// updateStealthBoats moves active stealth drone speedboats and rolls for new spawns.
+// Spawn probability scales with wave: 8% per wave capped at 80%, checked every 500 ticks.
+// Forced spawn at Ticks == 600 (approx 10s) for testing new mechanics.
+func (g *Game) updateStealthBoats() {
+	if g.Ticks == 600 {
+		g.spawnStealthBoat()
+		return
+	}
+
+	if g.Ticks > 0 && g.Ticks%500 == 0 {
+		activeCount := 0
+		for i := range g.stealthBoats {
+			if g.stealthBoats[i].Active {
+				activeCount++
+			}
+		}
+		if activeCount == 0 {
+			chance := g.Wave * 8
+			if chance > 80 {
+				chance = 80
+			}
+			if rand.Intn(100) < chance {
+				g.spawnStealthBoat()
+			}
+		}
+	}
+
+	for i := range g.stealthBoats {
+		sb := &g.stealthBoats[i]
+		if !sb.Active {
+			continue
+		}
+		sb.X += sb.VX
+		if sb.X < 0 {
+			sb.Active = false
+		}
+	}
+}
+
+func (g *Game) spawnStealthBoat() {
+	carrierCY := float64(g.carrier.Y + g.carrier.Height/2)
+	spawnY := carrierCY + float64(rand.Intn(11)-5)
+	spawnX := g.getCoastlineThreshold(int(math.Round(spawnY))) - 3.0
+	sb := StealthBoat{
+		X:      spawnX,
+		Y:      spawnY,
+		VX:     -0.35,
+		Active: true,
+	}
+	for i := range g.stealthBoats {
+		if !g.stealthBoats[i].Active {
+			g.stealthBoats[i] = sb
+			slog.Warn("Stealth drone speedboat launched!", "x", spawnX, "y", spawnY, "wave", g.Wave)
+			return
+		}
+	}
+	g.stealthBoats = append(g.stealthBoats, sb)
+	slog.Warn("Stealth drone speedboat launched!", "x", spawnX, "y", spawnY, "wave", g.Wave)
+}
+
 // updateLandForces updates factories, drone orbits, tanks, and static AA guns.
 func (g *Game) updateLandForces() {
 	g.updateFactories()

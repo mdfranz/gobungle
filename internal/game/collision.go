@@ -6,6 +6,24 @@ import (
 	"math/rand"
 )
 
+// killHeli decrements the per-wave life count and either starts the respawn timer or
+// ends the game when lives are exhausted.
+func (g *Game) killHeli(hasIncoming bool) {
+	g.Lives--
+	slog.Warn("Osprey lost", "lives_remaining", g.Lives)
+	if g.Lives <= 0 {
+		g.Lives = 0
+		slog.Error("No lives remaining — game over")
+		g.gameOver = true
+		return
+	}
+	if hasIncoming {
+		g.heli.RespawnTimer = 65
+	} else {
+		g.heli.RespawnTimer = 40
+	}
+}
+
 // applyBlastDamage deals armor damage to the helicopter if it is airborne and within
 // blastRadius world-cells of (x, y). Used for secondary explosions when targets finish sinking.
 func (g *Game) applyBlastDamage(x, y, blastRadius, damage float64) {
@@ -39,11 +57,7 @@ func (g *Game) applyBlastDamage(x, y, blastRadius, damage float64) {
 				break
 			}
 		}
-		if hasIncoming {
-			g.heli.RespawnTimer = 65
-		} else {
-			g.heli.RespawnTimer = 40
-		}
+		g.killHeli(hasIncoming)
 	}
 }
 
@@ -54,6 +68,40 @@ func (g *Game) checkCollisions() {
 	g.checkMissileCollisions()
 	g.checkPlayerBulletsVsEnemyMissiles()
 	g.checkEnemyBulletsVsPlayerMissiles()
+	g.checkStealthBoatVsCarrier()
+}
+
+// checkStealthBoatVsCarrier triggers instant game over when a stealth boat reaches the carrier.
+func (g *Game) checkStealthBoatVsCarrier() {
+	carrierCX := float64(g.carrier.X + g.carrier.Width/2)
+	carrierCY := float64(g.carrier.Y + g.carrier.Height/2)
+	halfW := float64(g.carrier.Width/2) + 1
+	halfH := float64(g.carrier.Height/2) + 1
+	for i := range g.stealthBoats {
+		sb := &g.stealthBoats[i]
+		if !sb.Active {
+			continue
+		}
+		if math.Abs(sb.X-carrierCX) < halfW && math.Abs(sb.Y-carrierCY) < halfH {
+			sb.Active = false
+			slog.Error("STEALTH DRONE SPEEDBOAT RAMMED THE CARRIER! CARRIER DESTROYED!")
+			
+			// Trigger dramatic destruction sequence
+			g.carrierDestroying = true
+			g.destructionTicks = 80 // ~3 seconds of carnage at 25 FPS
+			g.carrier.Health = 0
+			
+			// Initial massive impact explosions
+			for i := 0; i < 15; i++ {
+				g.explosions = append(g.explosions, Explosion{
+					X:   g.carrier.X + rand.Intn(g.carrier.Width),
+					Y:   g.carrier.Y + rand.Intn(g.carrier.Height),
+					Age: rand.Intn(3),
+				})
+			}
+			PlaySound("explosion")
+		}
+	}
 }
 
 // checkDroneMissileInterceptions checks whether orbiting drones intercept guided missiles.
@@ -140,7 +188,6 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 				}
 			}
 
-			// If there are active enemy missiles in flight (on launch), add a slight additional delay after getting killed
 			hasIncoming := false
 			for j := 0; j < len(g.missiles); j++ {
 				if g.missiles[j].Active && g.missiles[j].IsEnemy {
@@ -148,11 +195,7 @@ func (g *Game) checkEnemyBulletVsPlayer(bullet *Bullet) {
 					break
 				}
 			}
-			if hasIncoming {
-				g.heli.RespawnTimer = 65 // Set 2.6 seconds delay (65 ticks @ 25 FPS)
-			} else {
-				g.heli.RespawnTimer = 40 // Set 1.6 seconds delay (40 ticks @ 25 FPS)
-			}
+			g.killHeli(hasIncoming)
 		}
 	}
 }
@@ -187,6 +230,22 @@ func (g *Game) checkPlayerBulletVsTargets(bullet *Bullet) {
 				g.explosions = append(g.explosions, Explosion{X: int(math.Round(bullet.X)), Y: int(math.Round(bullet.Y)), Age: 0})
 				PlaySound("explosion")
 			}
+			return
+		}
+	}
+
+	// vs Stealth boats (cannon only — no missile lock)
+	for i := range g.stealthBoats {
+		sb := &g.stealthBoats[i]
+		if !sb.Active {
+			continue
+		}
+		if math.Abs(bullet.X-sb.X) < 2.0 && math.Abs(bullet.Y-sb.Y) < 1.0 {
+			bullet.Active = false
+			sb.Active = false
+			slog.Info("Stealth drone speedboat destroyed by cannon!", "idx", i)
+			g.explosions = append(g.explosions, Explosion{X: int(math.Round(sb.X)), Y: int(math.Round(sb.Y)), Age: 0})
+			PlaySound("explosion")
 			return
 		}
 	}

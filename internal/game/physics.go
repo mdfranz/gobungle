@@ -17,13 +17,47 @@ const (
 
 // updatePhysics is the top-level physics coordinator called once per tick.
 func (g *Game) updatePhysics() {
+	if g.gameOver {
+		return
+	}
+
 	g.Ticks++
+
+	// Handle carrier destruction sequence
+	if g.carrierDestroying {
+		g.destructionTicks--
+		
+		// Spawn secondary explosions across the deck
+		if g.destructionTicks%4 == 0 {
+			g.explosions = append(g.explosions, Explosion{
+				X:   g.carrier.X + rand.Intn(g.carrier.Width),
+				Y:   g.carrier.Y + rand.Intn(g.carrier.Height),
+				Age: rand.Intn(2),
+			})
+			if g.destructionTicks%12 == 0 {
+				PlaySound("explosion")
+			}
+		}
+
+		if g.destructionTicks <= 0 {
+			g.carrierDestroying = false
+			g.gameOver = true
+		}
+		
+		// Autopilot: fly back to watch the destruction
+		g.updateHelicopter()
+		g.updateExplosions()
+		g.updateCamera()
+		return
+	}
+
 	g.updateHelicopter()
 	g.updateCamera() // Update scroll-window camera position
 	g.updateWeaponCooldowns()
 	g.updateCarrierDefense()
 	g.updateProjectiles()
 	g.updateBoats()
+	g.updateStealthBoats()
 	g.updateLandForces()
 	g.updateExplosions()
 	g.checkCollisions()
@@ -35,6 +69,37 @@ func (g *Game) updateHelicopter() {
 	if g.heli.TakeoffCooldown > 0 {
 		g.heli.TakeoffCooldown--
 	}
+
+	// Autopilot override during carrier destruction
+	if g.carrierDestroying && !g.heli.Landed && g.heli.RespawnTimer == 0 {
+		padX := float64(g.carrier.X + g.carrier.Width/3)
+		padY := float64(g.carrier.Y + g.carrier.Height/2)
+		
+		dx := padX - g.heli.X
+		dy := padY - g.heli.Y
+		dist := math.Sqrt(dx*dx + dy*dy)
+		
+		if dist > 2.0 {
+			// Calculate desired direction
+			angle := math.Atan2(dy, dx)
+			// Map angle to 8-way Dir (0-7: East, SE, South, SW, West, NW, North, NE)
+			// Atan2 returns -PI to PI. 0 is East.
+			deg := angle * (180.0 / math.Pi)
+			if deg < 0 {
+				deg += 360
+			}
+			g.heli.Dir = int(math.Round(deg/45.0)) % 8
+			
+			// Move faster than normal to ensure we get there
+			speed := 1.2
+			g.heli.VX = math.Cos(angle) * speed
+			g.heli.VY = math.Sin(angle) * speed
+		} else {
+			g.heli.VX = 0
+			g.heli.VY = 0
+		}
+	}
+
 	if g.heli.RespawnTimer > 0 {
 		g.heli.RespawnTimer--
 		if g.heli.RespawnTimer%4 == 0 {
@@ -57,6 +122,7 @@ func (g *Game) updateHelicopter() {
 			g.heli.Armor = 100.0
 			g.heli.MissileAmmo = 4
 			g.heli.Landed = true
+			g.heli.ReturningToCarrier = false
 			g.heli.TakeoffCooldown = 25
 
 			// Re-center camera over carrier pad
@@ -142,7 +208,6 @@ func (g *Game) updateHelicopter() {
 				}
 
 				g.heli.Armor = 0
-				// If there are active enemy missiles in flight (on launch), add a slight additional delay after getting killed
 				hasIncoming := false
 				for j := 0; j < len(g.missiles); j++ {
 					if g.missiles[j].Active && g.missiles[j].IsEnemy {
@@ -150,11 +215,34 @@ func (g *Game) updateHelicopter() {
 						break
 					}
 				}
-				if hasIncoming {
-					g.heli.RespawnTimer = 65 // Set 2.6 seconds delay (65 ticks @ 25 FPS)
-				} else {
-					g.heli.RespawnTimer = 40 // Set 1.6 seconds delay (40 ticks @ 25 FPS)
+				g.killHeli(hasIncoming)
+			}
+		}
+
+		// Autopilot: fly back to carrier after wave clear
+		if g.heli.ReturningToCarrier {
+			padX := float64(g.carrier.X + g.carrier.Width/3)
+			padY := float64(g.carrier.Y + g.carrier.Height/2)
+			toDX := padX - g.heli.X
+			toDY := padY - g.heli.Y
+			dist := math.Sqrt(toDX*toDX + toDY*toDY)
+			if dist > 0.5 {
+				bestDir := 0
+				bestDot := -math.MaxFloat64
+				for d := 0; d < 8; d++ {
+					dot := (toDX*dx[d] + toDY*dy[d]*2.0) / (dist + 0.001)
+					if dot > bestDot {
+						bestDot = dot
+						bestDir = d
+					}
 				}
+				g.heli.Dir = bestDir
+				thrust := 0.10
+				if dist < 5.0 {
+					thrust = 0.04
+				}
+				g.heli.VX += dx[g.heli.Dir] * thrust
+				g.heli.VY += dy[g.heli.Dir] * thrust
 			}
 		}
 
@@ -186,6 +274,7 @@ func (g *Game) updateHelicopter() {
 		speed = math.Sqrt(g.heli.VX*g.heli.VX + g.heli.VY*g.heli.VY)
 		if aligned && speed < 0.12 && g.heli.TakeoffCooldown == 0 {
 			g.heli.Landed = true
+			g.heli.ReturningToCarrier = false
 			g.heli.X = float64(padX)
 			g.heli.Y = float64(padY)
 			g.heli.VX = 0
@@ -434,8 +523,14 @@ func (g *Game) checkWaveCompletion() {
 	}
 
 	g.Wave++
+	g.Lives = 5
 	PlaySound("explosion")
 	slog.Info("All enemy assets destroyed! Advancing to next wave", "wave", g.Wave, "speed_multiplier", 1.25)
+
+	if !g.heli.Landed && g.heli.Armor > 0 && g.heli.RespawnTimer == 0 {
+		g.heli.ReturningToCarrier = true
+		slog.Info("Wave cleared - Osprey returning to carrier")
+	}
 
 	for i := range g.boats {
 		g.boats[i].Active = true
@@ -548,6 +643,7 @@ func (g *Game) resetRound() {
 	slog.Info("Resetting round due to carrier destruction")
 
 	g.carrier.Health = 100.0
+	g.Lives = 5
 
 	padX := g.carrier.X + g.carrier.Width/3
 	padY := g.carrier.Y + g.carrier.Height/2

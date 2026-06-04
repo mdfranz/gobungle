@@ -100,6 +100,20 @@ func (s *SynthSound) Stream(samples [][2]float64) (n int, ok bool) {
 			rumble := math.Sin(2 * math.Pi * subFreq * 2 * s.time)
 			val = 0.55*noise + 0.30*subBass + 0.15*rumble
 			val *= math.Exp(-1.8 * progress)
+
+		case "speedboat":
+			// High-speed turbine/engine whine + rhythmic water slap
+			// Engine: slightly oscillating frequency for "moving" feel
+			freq := 220.0 + 15.0*math.Sin(2*math.Pi*8.0*s.time)
+			engine := math.Sin(2 * math.Pi * freq * s.time) * 0.4
+			// Water slap noise: pulses at ~6Hz
+			slap := 0.0
+			if int(s.time*12)%2 == 0 {
+				noise := rand.Float64()*2.0 - 1.0
+				slap = noise * 0.4 * math.Exp(-30.0*math.Mod(s.time, 1.0/12.0))
+			}
+			val = engine + slap
+			val *= 0.5
 		}
 
 		samples[i][0] = val * s.volume
@@ -149,6 +163,9 @@ func PlaySound(soundType string) {
 	case "explosion":
 		dur = 800 * time.Millisecond
 		volume = 0.38
+	case "speedboat":
+		dur = 300 * time.Millisecond
+		volume = 0.18
 	default:
 		return
 	}

@@ -16,7 +16,7 @@ var sprites = [8][5][7]rune{
 		{' ', ' ', ' ', '▲', ' ', ' ', ' '},
 		{' ', '*', '═', '#', '═', '*', ' '},
 		{' ', ' ', ' ', '#', ' ', ' ', ' '},
-		{' ', ' ', '+', '#', '+', ' ', ' '},
+		{' ', ' ', ' ', '+', ' ', ' ', ' '},
 		{' ', ' ', ' ', ' ', ' ', ' ', ' '},
 	},
 	// 1: NE
@@ -46,7 +46,7 @@ var sprites = [8][5][7]rune{
 	// 4: South
 	{
 		{' ', ' ', ' ', ' ', ' ', ' ', ' '},
-		{' ', ' ', '+', '|', '+', ' ', ' '},
+		{' ', ' ', ' ', '+', ' ', ' ', ' '},
 		{' ', ' ', ' ', '#', ' ', ' ', ' '},
 		{' ', '*', '═', '#', '═', '*', ' '},
 		{' ', ' ', ' ', '▼', ' ', ' ', ' '},
@@ -153,9 +153,10 @@ type Helicopter struct {
 	TakeoffCooldown int
 	MissileCooldown int
 	MissileAmmo     int
-	RespawnTimer    int
-	CannonHeat      int
-	CannonJammed    int
+	RespawnTimer        int
+	CannonHeat          int
+	CannonJammed        int
+	ReturningToCarrier  bool
 }
 
 // Central island housing the enemy factory
@@ -204,6 +205,14 @@ type Tank struct {
 	PatrolDir    int
 	MinCoord     float64
 	MaxCoord     float64
+}
+
+// High-speed stealth drone speedboat: invisible to radar, reaches carrier = instant game over
+type StealthBoat struct {
+	X      float64
+	Y      float64
+	VX     float64
+	Active bool
 }
 
 // Static anti-aircraft gun emplacements along the coastline

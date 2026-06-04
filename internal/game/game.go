@@ -19,9 +19,11 @@ type Game struct {
 	camX           int
 	camY           int
 	quit           chan struct{}
-	quitConfirming bool
-	gameOver       bool
-	Wave           int
+	quitConfirming    bool
+	gameOver          bool
+	carrierDestroying bool
+	destructionTicks  int
+	Wave              int
 	heli           Helicopter
 	carrier        Carrier
 	bullets        []Bullet
@@ -33,8 +35,10 @@ type Game struct {
 	drones         []Drone
 	tanks          []Tank
 	staticAAs      []StaticAA
+	stealthBoats   []StealthBoat
 	explosions     []Explosion
 	boatsSunk      int
+	Lives          int
 	Ticks          int
 	lockedBoat     *Boat
 	lockedFactory  *Factory
@@ -134,6 +138,7 @@ func New(screen tcell.Screen) *Game {
 		camY:         camY,
 		quit:         make(chan struct{}),
 		Wave:         1,
+		Lives:        5,
 		heli:         heli,
 		carrier:      carrier,
 		bullets:      make([]Bullet, 0, 16),
@@ -144,6 +149,7 @@ func New(screen tcell.Screen) *Game {
 		factories:    factories,
 		drones:       drones,
 		tanks:        tanks,
+		stealthBoats: make([]StealthBoat, 0, 2),
 		explosions:   make([]Explosion, 0, 8),
 	}
 	// Always start gunboats close to the shore (water side of coastline threshold)
