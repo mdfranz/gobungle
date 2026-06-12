@@ -1,12 +1,27 @@
 package game
 
 import (
+	"encoding/binary"
 	"log/slog"
 	"math"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
+)
+
+type jsEvent struct {
+	Time   uint32
+	Value  int16
+	Type   uint8
+	Number uint8
+}
+
+const (
+	jsEventButton uint8 = 0x01
+	jsEventAxis   uint8 = 0x02
+	jsEventInit   uint8 = 0x80
 )
 
 type Game struct {
@@ -45,6 +60,9 @@ type Game struct {
 	lockedFactory  *Factory
 	lockedTank     *Tank
 	lockedStaticAA *StaticAA
+	joystickAxes    map[uint8]int16
+	joystickButtons map[uint8]bool
+	joystickLastBtn map[uint8]bool
 }
 
 // New initializes the game world and returns a ready-to-run Game.
@@ -130,28 +148,31 @@ func New(screen tcell.Screen) *Game {
 	}
 
 	g := &Game{
-		screen:       screen,
-		width:        w,
-		height:       h,
-		worldWidth:   worldWidth,
-		worldHeight:  worldHeight,
-		camX:         camX,
-		camY:         camY,
-		quit:         make(chan struct{}),
-		Wave:         1,
-		Lives:        5,
-		heli:         heli,
-		carrier:      carrier,
-		bullets:      make([]Bullet, 0, 16),
-		missiles:     make([]Missile, 0, 2),
-		boats:        boats,
-		initialBoats: make([]Boat, len(boats)),
-		island:       Island{Active: true},
-		factories:    factories,
-		drones:       drones,
-		tanks:        tanks,
-		stealthBoats: make([]StealthBoat, 0, 2),
-		explosions:   make([]Explosion, 0, 8),
+		screen:          screen,
+		width:           w,
+		height:          h,
+		worldWidth:      worldWidth,
+		worldHeight:     worldHeight,
+		camX:            camX,
+		camY:            camY,
+		quit:            make(chan struct{}),
+		Wave:            1,
+		Lives:           5,
+		heli:            heli,
+		carrier:         carrier,
+		bullets:         make([]Bullet, 0, 16),
+		missiles:        make([]Missile, 0, 2),
+		boats:           boats,
+		initialBoats:    make([]Boat, len(boats)),
+		island:          Island{Active: true},
+		factories:       factories,
+		drones:          drones,
+		tanks:           tanks,
+		stealthBoats:    make([]StealthBoat, 0, 2),
+		explosions:      make([]Explosion, 0, 8),
+		joystickAxes:    make(map[uint8]int16),
+		joystickButtons: make(map[uint8]bool),
+		joystickLastBtn: make(map[uint8]bool),
 	}
 	// Always start gunboats close to the shore (water side of coastline threshold)
 	for i := range g.boats {
@@ -195,6 +216,8 @@ func (g *Game) gameLoop() {
 
 // inputLoop blocks on tcell event polling and routes events under the game lock.
 func (g *Game) inputLoop() {
+	go g.startJoystickReader()
+
 	for {
 		ev := g.screen.PollEvent()
 		switch ev := ev.(type) {
@@ -238,5 +261,61 @@ func (g *Game) inputLoop() {
 			g.handleKeyPress(ev)
 			g.mu.Unlock()
 		}
+	}
+}
+
+// startJoystickReader reads from the joystick device and updates the game's axis and button state.
+func (g *Game) startJoystickReader() {
+	devicePath := "/dev/input/js0"
+	file, err := os.Open(devicePath)
+	if err != nil {
+		slog.Info("Joystick not available", "path", devicePath, "error", err)
+		return
+	}
+	defer file.Close()
+
+	slog.Info("Joystick reader started", "path", devicePath)
+
+	for {
+		select {
+		case <-g.quit:
+			return
+		default:
+		}
+
+		var event jsEvent
+		if err := binary.Read(file, binary.LittleEndian, &event); err != nil {
+			return
+		}
+
+		g.mu.Lock()
+		if (event.Type & jsEventInit) == 0 {
+			if event.Type == jsEventAxis {
+				g.joystickAxes[event.Number] = event.Value
+			} else if event.Type == jsEventButton {
+				isPressed := event.Value == 1
+				g.joystickButtons[event.Number] = isPressed
+
+				// Log button changes
+				wasPressed := g.joystickLastBtn[event.Number]
+				if isPressed != wasPressed {
+					g.joystickLastBtn[event.Number] = isPressed
+					btnNames := map[uint8]string{
+						0: "A", 1: "B", 2: "X", 3: "Y", 4: "LB", 5: "RB",
+						6: "LB", 7: "RB", 8: "BACK", 9: "START",
+					}
+					btnName := btnNames[event.Number]
+					if btnName == "" {
+						btnName = "UNKNOWN"
+					}
+					if isPressed {
+						slog.Info("Joystick button pressed", "button", event.Number, "name", btnName)
+					} else {
+						slog.Info("Joystick button released", "button", event.Number, "name", btnName)
+					}
+				}
+			}
+		}
+		g.mu.Unlock()
 	}
 }

@@ -1,0 +1,389 @@
+--- Recording Logitech F310 Activity from /dev/input/js0 ---
+--- Press Ctrl+C to exit ---
+
+[INIT]  | Type: Button | ID: 0  | Name: A     | Action: RELEASED
+[INIT]  | Type: Button | ID: 1  | Name: B     | Action: RELEASED
+[INIT]  | Type: Button | ID: 2  | Name: X     | Action: RELEASED
+[INIT]  | Type: Button | ID: 3  | Name: Y     | Action: RELEASED
+[INIT]  | Type: Button | ID: 4  | Name: LB    | Action: RELEASED
+[INIT]  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+[INIT]  | Type: Button | ID: 6  | Name: Back  | Action: RELEASED
+[INIT]  | Type: Button | ID: 7  | Name: Start | Action: RELEASED
+[INIT]  | Type: Button | ID: 8  | Name: Logi  | Action: RELEASED
+[INIT]  | Type: Button | ID: 9  | Name: L3    | Action: RELEASED
+[INIT]  | Type: Button | ID: 10 | Name: R3    | Action: RELEASED
+[INIT]  | Type: Axis   | ID: 0  | Value: 0
+[INIT]  | Type: Axis   | ID: 1  | Value: -2
+[INIT]  | Type: Axis   | ID: 2  | Value: -32767
+[INIT]  | Type: Axis   | ID: 3  | Value: 0
+[INIT]  | Type: Axis   | ID: 4  | Value: -2
+[INIT]  | Type: Axis   | ID: 5  | Value: -32767
+[INIT]  | Type: Axis   | ID: 6  | Value: 0
+[INIT]  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 4  | Name: LB    | Action: RELEASED
+ EVENT  | Type: Axis   | ID: 6  | Value: -32767
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 6  | Value: -32767
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 7  | Value: -32767
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 7  | Value: -32767
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -261
+ EVENT  | Type: Axis   | ID: 4  | Value: -1297
+ EVENT  | Type: Axis   | ID: 4  | Value: -3628
+ EVENT  | Type: Axis   | ID: 4  | Value: -6995
+ EVENT  | Type: Axis   | ID: 4  | Value: -11140
+ EVENT  | Type: Axis   | ID: 4  | Value: -15284
+ EVENT  | Type: Axis   | ID: 4  | Value: -19428
+ EVENT  | Type: Axis   | ID: 4  | Value: -23573
+ EVENT  | Type: Axis   | ID: 4  | Value: -27458
+ EVENT  | Type: Axis   | ID: 4  | Value: -30307
+ EVENT  | Type: Axis   | ID: 4  | Value: -32120
+ EVENT  | Type: Axis   | ID: 4  | Value: -32767
+ EVENT  | Type: Axis   | ID: 4  | Value: -29271
+ EVENT  | Type: Axis   | ID: 4  | Value: -25386
+ EVENT  | Type: Axis   | ID: 4  | Value: -21241
+ EVENT  | Type: Axis   | ID: 4  | Value: -17356
+ EVENT  | Type: Axis   | ID: 4  | Value: -13212
+ EVENT  | Type: Axis   | ID: 4  | Value: -9067
+ EVENT  | Type: Axis   | ID: 4  | Value: -5182
+ EVENT  | Type: Axis   | ID: 4  | Value: -2333
+ EVENT  | Type: Axis   | ID: 4  | Value: -2
+ EVENT  | Type: Axis   | ID: 4  | Value: -3110
+ EVENT  | Type: Axis   | ID: 4  | Value: -6218
+ EVENT  | Type: Axis   | ID: 4  | Value: -10362
+ EVENT  | Type: Axis   | ID: 4  | Value: -14507
+ EVENT  | Type: Axis   | ID: 4  | Value: -18651
+ EVENT  | Type: Axis   | ID: 7  | Value: -32767
+ EVENT  | Type: Axis   | ID: 4  | Value: -22796
+ EVENT  | Type: Axis   | ID: 4  | Value: -26681
+ EVENT  | Type: Axis   | ID: 4  | Value: -29789
+ EVENT  | Type: Axis   | ID: 4  | Value: -31861
+ EVENT  | Type: Axis   | ID: 4  | Value: -32767
+ EVENT  | Type: Axis   | ID: 3  | Value: -2074
+ EVENT  | Type: Axis   | ID: 3  | Value: -3369
+ EVENT  | Type: Axis   | ID: 3  | Value: -4405
+ EVENT  | Type: Axis   | ID: 4  | Value: -28494
+ EVENT  | Type: Axis   | ID: 4  | Value: -24350
+ EVENT  | Type: Axis   | ID: 4  | Value: -20205
+ EVENT  | Type: Axis   | ID: 4  | Value: -16320
+ EVENT  | Type: Axis   | ID: 4  | Value: -12176
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -8031
+ EVENT  | Type: Axis   | ID: 3  | Value: -2333
+ EVENT  | Type: Axis   | ID: 4  | Value: -3887
+ EVENT  | Type: Axis   | ID: 3  | Value: -779
+ EVENT  | Type: Axis   | ID: 4  | Value: -779
+ EVENT  | Type: Axis   | ID: 3  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -2
+ EVENT  | Type: Axis   | ID: 3  | Value: 1295
+ EVENT  | Type: Axis   | ID: 3  | Value: 5439
+ EVENT  | Type: Axis   | ID: 3  | Value: 9583
+ EVENT  | Type: Axis   | ID: 3  | Value: 13728
+ EVENT  | Type: Axis   | ID: 3  | Value: 17613
+ EVENT  | Type: Axis   | ID: 3  | Value: 21757
+ EVENT  | Type: Axis   | ID: 3  | Value: 25902
+ EVENT  | Type: Axis   | ID: 3  | Value: 30046
+ EVENT  | Type: Axis   | ID: 3  | Value: 32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 30305
+ EVENT  | Type: Axis   | ID: 3  | Value: 26161
+ EVENT  | Type: Axis   | ID: 3  | Value: 22016
+ EVENT  | Type: Axis   | ID: 3  | Value: 17872
+ EVENT  | Type: Axis   | ID: 3  | Value: 13728
+ EVENT  | Type: Axis   | ID: 3  | Value: 9583
+ EVENT  | Type: Axis   | ID: 3  | Value: 5439
+ EVENT  | Type: Axis   | ID: 3  | Value: 2849
+ EVENT  | Type: Axis   | ID: 3  | Value: 5439
+ EVENT  | Type: Axis   | ID: 3  | Value: 9583
+ EVENT  | Type: Axis   | ID: 3  | Value: 13728
+ EVENT  | Type: Axis   | ID: 3  | Value: 17872
+ EVENT  | Type: Axis   | ID: 3  | Value: 22016
+ EVENT  | Type: Axis   | ID: 3  | Value: 26161
+ EVENT  | Type: Axis   | ID: 3  | Value: 30305
+ EVENT  | Type: Axis   | ID: 3  | Value: 32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 30305
+ EVENT  | Type: Axis   | ID: 3  | Value: 26161
+ EVENT  | Type: Axis   | ID: 3  | Value: 22016
+ EVENT  | Type: Axis   | ID: 3  | Value: 17872
+ EVENT  | Type: Axis   | ID: 3  | Value: 13728
+ EVENT  | Type: Axis   | ID: 3  | Value: 9583
+ EVENT  | Type: Axis   | ID: 3  | Value: 5439
+ EVENT  | Type: Axis   | ID: 3  | Value: 1295
+ EVENT  | Type: Axis   | ID: 3  | Value: 0
+ EVENT  | Type: Axis   | ID: 3  | Value: 4144
+ EVENT  | Type: Axis   | ID: 3  | Value: 8288
+ EVENT  | Type: Axis   | ID: 3  | Value: 12433
+ EVENT  | Type: Axis   | ID: 3  | Value: 16318
+ EVENT  | Type: Axis   | ID: 4  | Value: -2074
+ EVENT  | Type: Axis   | ID: 3  | Value: 20462
+ EVENT  | Type: Axis   | ID: 4  | Value: -2851
+ EVENT  | Type: Axis   | ID: 3  | Value: 24607
+ EVENT  | Type: Axis   | ID: 4  | Value: -3628
+ EVENT  | Type: Axis   | ID: 3  | Value: 28751
+ EVENT  | Type: Axis   | ID: 4  | Value: -4405
+ EVENT  | Type: Axis   | ID: 3  | Value: 32767
+ EVENT  | Type: Axis   | ID: 4  | Value: -5182
+ EVENT  | Type: Axis   | ID: 4  | Value: -5959
+ EVENT  | Type: Axis   | ID: 3  | Value: 29010
+ EVENT  | Type: Axis   | ID: 3  | Value: 24866
+ EVENT  | Type: Axis   | ID: 4  | Value: -3887
+ EVENT  | Type: Axis   | ID: 3  | Value: 20721
+ EVENT  | Type: Axis   | ID: 4  | Value: -3110
+ EVENT  | Type: Axis   | ID: 3  | Value: 16577
+ EVENT  | Type: Axis   | ID: 4  | Value: -2333
+ EVENT  | Type: Axis   | ID: 3  | Value: 12692
+ EVENT  | Type: Axis   | ID: 4  | Value: -1556
+ EVENT  | Type: Axis   | ID: 3  | Value: 8547
+ EVENT  | Type: Axis   | ID: 4  | Value: -779
+ EVENT  | Type: Axis   | ID: 3  | Value: 4403
+ EVENT  | Type: Axis   | ID: 4  | Value: -261
+ EVENT  | Type: Axis   | ID: 3  | Value: 259
+ EVENT  | Type: Axis   | ID: 4  | Value: -2
+ EVENT  | Type: Axis   | ID: 3  | Value: 0
+ EVENT  | Type: Axis   | ID: 6  | Value: -32767
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 6  | Value: -32767
+ EVENT  | Type: Axis   | ID: 7  | Value: 32767
+ EVENT  | Type: Axis   | ID: 4  | Value: 2331
+ EVENT  | Type: Axis   | ID: 4  | Value: 6475
+ EVENT  | Type: Axis   | ID: 4  | Value: 10619
+ EVENT  | Type: Axis   | ID: 4  | Value: 14764
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: 18908
+ EVENT  | Type: Axis   | ID: 4  | Value: 23053
+ EVENT  | Type: Axis   | ID: 4  | Value: 27197
+ EVENT  | Type: Axis   | ID: 4  | Value: 31341
+ EVENT  | Type: Axis   | ID: 4  | Value: 32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 2590
+ EVENT  | Type: Axis   | ID: 3  | Value: 3626
+ EVENT  | Type: Axis   | ID: 3  | Value: 4921
+ EVENT  | Type: Axis   | ID: 3  | Value: 6216
+ EVENT  | Type: Axis   | ID: 3  | Value: 7770
+ EVENT  | Type: Axis   | ID: 3  | Value: 9324
+ EVENT  | Type: Axis   | ID: 3  | Value: 10619
+ EVENT  | Type: Axis   | ID: 3  | Value: 13987
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 3  | Value: 17095
+ EVENT  | Type: Axis   | ID: 3  | Value: 20203
+ EVENT  | Type: Axis   | ID: 3  | Value: 23053
+ EVENT  | Type: Axis   | ID: 3  | Value: 25643
+ EVENT  | Type: Axis   | ID: 3  | Value: 28233
+ EVENT  | Type: Axis   | ID: 4  | Value: 29787
+ EVENT  | Type: Axis   | ID: 3  | Value: 30564
+ EVENT  | Type: Axis   | ID: 4  | Value: 25643
+ EVENT  | Type: Axis   | ID: 4  | Value: 21498
+ EVENT  | Type: Axis   | ID: 3  | Value: 26679
+ EVENT  | Type: Axis   | ID: 4  | Value: 17354
+ EVENT  | Type: Axis   | ID: 3  | Value: 22535
+ EVENT  | Type: Axis   | ID: 4  | Value: 12692
+ EVENT  | Type: Axis   | ID: 3  | Value: 18390
+ EVENT  | Type: Axis   | ID: 4  | Value: 8029
+ EVENT  | Type: Axis   | ID: 3  | Value: 14246
+ EVENT  | Type: Axis   | ID: 4  | Value: 2590
+ EVENT  | Type: Axis   | ID: 3  | Value: 10101
+ EVENT  | Type: Axis   | ID: 4  | Value: -2592
+ EVENT  | Type: Axis   | ID: 3  | Value: 5957
+ EVENT  | Type: Axis   | ID: 4  | Value: -6477
+ EVENT  | Type: Axis   | ID: 3  | Value: 1813
+ EVENT  | Type: Axis   | ID: 4  | Value: -9326
+ EVENT  | Type: Axis   | ID: 7  | Value: -32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 259
+ EVENT  | Type: Axis   | ID: 4  | Value: -13212
+ EVENT  | Type: Axis   | ID: 3  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -17356
+ EVENT  | Type: Axis   | ID: 4  | Value: -20982
+ EVENT  | Type: Axis   | ID: 4  | Value: -24350
+ EVENT  | Type: Axis   | ID: 4  | Value: -27199
+ EVENT  | Type: Axis   | ID: 4  | Value: -29530
+ EVENT  | Type: Axis   | ID: 3  | Value: -520
+ EVENT  | Type: Axis   | ID: 4  | Value: -31084
+ EVENT  | Type: Axis   | ID: 3  | Value: -3110
+ EVENT  | Type: Axis   | ID: 4  | Value: -32379
+ EVENT  | Type: Axis   | ID: 3  | Value: -7254
+ EVENT  | Type: Axis   | ID: 4  | Value: -32638
+ EVENT  | Type: Axis   | ID: 3  | Value: -11399
+ EVENT  | Type: Axis   | ID: 6  | Value: 32767
+ EVENT  | Type: Axis   | ID: 3  | Value: -15543
+ EVENT  | Type: Axis   | ID: 3  | Value: -19687
+ EVENT  | Type: Axis   | ID: 4  | Value: -30566
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 3  | Value: -23832
+ EVENT  | Type: Axis   | ID: 4  | Value: -29271
+ EVENT  | Type: Axis   | ID: 3  | Value: -27976
+ EVENT  | Type: Axis   | ID: 4  | Value: -27976
+ EVENT  | Type: Axis   | ID: 3  | Value: -31343
+ EVENT  | Type: Axis   | ID: 4  | Value: -26681
+ EVENT  | Type: Axis   | ID: 3  | Value: -32767
+ EVENT  | Type: Axis   | ID: 4  | Value: -25127
+ EVENT  | Type: Axis   | ID: 4  | Value: -23573
+ EVENT  | Type: Axis   | ID: 7  | Value: 32767
+ EVENT  | Type: Axis   | ID: 4  | Value: -22019
+ EVENT  | Type: Axis   | ID: 4  | Value: -20464
+ EVENT  | Type: Axis   | ID: 4  | Value: -18651
+ EVENT  | Type: Axis   | ID: 4  | Value: -16579
+ EVENT  | Type: Axis   | ID: 4  | Value: -13989
+ EVENT  | Type: Axis   | ID: 4  | Value: -11399
+ EVENT  | Type: Axis   | ID: 4  | Value: -8808
+ EVENT  | Type: Axis   | ID: 4  | Value: -6218
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -4146
+ EVENT  | Type: Axis   | ID: 4  | Value: -779
+ EVENT  | Type: Axis   | ID: 4  | Value: 2849
+ EVENT  | Type: Axis   | ID: 4  | Value: 7511
+ EVENT  | Type: Axis   | ID: 4  | Value: 11915
+ EVENT  | Type: Axis   | ID: 3  | Value: -30048
+ EVENT  | Type: Axis   | ID: 4  | Value: 16059
+ EVENT  | Type: Axis   | ID: 3  | Value: -25904
+ EVENT  | Type: Axis   | ID: 4  | Value: 20203
+ EVENT  | Type: Axis   | ID: 3  | Value: -21759
+ EVENT  | Type: Axis   | ID: 4  | Value: 24348
+ EVENT  | Type: Axis   | ID: 3  | Value: -17097
+ EVENT  | Type: Axis   | ID: 4  | Value: 28492
+ EVENT  | Type: Axis   | ID: 3  | Value: -8808
+ EVENT  | Type: Axis   | ID: 4  | Value: 31082
+ EVENT  | Type: Axis   | ID: 3  | Value: -520
+ EVENT  | Type: Axis   | ID: 4  | Value: 32636
+ EVENT  | Type: Axis   | ID: 3  | Value: 7511
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 3  | Value: 14764
+ EVENT  | Type: Axis   | ID: 4  | Value: 29269
+ EVENT  | Type: Axis   | ID: 6  | Value: -32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 20980
+ EVENT  | Type: Axis   | ID: 4  | Value: 26420
+ EVENT  | Type: Axis   | ID: 3  | Value: 25125
+ EVENT  | Type: Axis   | ID: 4  | Value: 22276
+ EVENT  | Type: Axis   | ID: 3  | Value: 29269
+ EVENT  | Type: Axis   | ID: 4  | Value: 18131
+ EVENT  | Type: Axis   | ID: 3  | Value: 32767
+ EVENT  | Type: Axis   | ID: 4  | Value: 13987
+ EVENT  | Type: Axis   | ID: 4  | Value: 9842
+ EVENT  | Type: Axis   | ID: 4  | Value: 5957
+ EVENT  | Type: Axis   | ID: 4  | Value: 3367
+ EVENT  | Type: Axis   | ID: 4  | Value: 1295
+ EVENT  | Type: Axis   | ID: 4  | Value: -2
+ EVENT  | Type: Axis   | ID: 4  | Value: -261
+ EVENT  | Type: Axis   | ID: 4  | Value: -1297
+ EVENT  | Type: Axis   | ID: 4  | Value: -2851
+ EVENT  | Type: Axis   | ID: 4  | Value: -4664
+ EVENT  | Type: Axis   | ID: 4  | Value: -5441
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 3  | Value: 26938
+ EVENT  | Type: Axis   | ID: 3  | Value: 22794
+ EVENT  | Type: Axis   | ID: 3  | Value: 18649
+ EVENT  | Type: Axis   | ID: 3  | Value: 14505
+ EVENT  | Type: Axis   | ID: 3  | Value: 10360
+ EVENT  | Type: Axis   | ID: 7  | Value: 32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 6216
+ EVENT  | Type: Axis   | ID: 4  | Value: -2592
+ EVENT  | Type: Axis   | ID: 6  | Value: 32767
+ EVENT  | Type: Axis   | ID: 3  | Value: 2072
+ EVENT  | Type: Axis   | ID: 4  | Value: -520
+ EVENT  | Type: Axis   | ID: 3  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -2
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 5  | Value: -30704
+ EVENT  | Type: Axis   | ID: 5  | Value: -25028
+ EVENT  | Type: Axis   | ID: 5  | Value: -17030
+ EVENT  | Type: Axis   | ID: 5  | Value: -8773
+ EVENT  | Type: Axis   | ID: 5  | Value: -775
+ EVENT  | Type: Axis   | ID: 5  | Value: 7482
+ EVENT  | Type: Axis   | ID: 5  | Value: 15738
+ EVENT  | Type: Axis   | ID: 5  | Value: 23995
+ EVENT  | Type: Axis   | ID: 5  | Value: 29929
+ EVENT  | Type: Axis   | ID: 5  | Value: 32767
+ EVENT  | Type: Axis   | ID: 5  | Value: 30961
+ EVENT  | Type: Axis   | ID: 5  | Value: 27091
+ EVENT  | Type: Axis   | ID: 5  | Value: 20641
+ EVENT  | Type: Axis   | ID: 5  | Value: 12384
+ EVENT  | Type: Axis   | ID: 5  | Value: 4128
+ EVENT  | Type: Axis   | ID: 5  | Value: -3871
+ EVENT  | Type: Axis   | ID: 5  | Value: -12127
+ EVENT  | Type: Axis   | ID: 5  | Value: -20384
+ EVENT  | Type: Axis   | ID: 5  | Value: -26834
+ EVENT  | Type: Axis   | ID: 5  | Value: -30962
+ EVENT  | Type: Axis   | ID: 5  | Value: -25028
+ EVENT  | Type: Axis   | ID: 5  | Value: -16772
+ EVENT  | Type: Axis   | ID: 5  | Value: -8515
+ EVENT  | Type: Axis   | ID: 5  | Value: -259
+ EVENT  | Type: Axis   | ID: 5  | Value: 7998
+ EVENT  | Type: Axis   | ID: 5  | Value: 16254
+ EVENT  | Type: Axis   | ID: 5  | Value: 24253
+ EVENT  | Type: Axis   | ID: 5  | Value: 30703
+ EVENT  | Type: Axis   | ID: 5  | Value: 32767
+ EVENT  | Type: Axis   | ID: 5  | Value: 29929
+ EVENT  | Type: Axis   | ID: 5  | Value: 24253
+ EVENT  | Type: Axis   | ID: 5  | Value: 15996
+ EVENT  | Type: Axis   | ID: 5  | Value: 7740
+ EVENT  | Type: Axis   | ID: 5  | Value: -517
+ EVENT  | Type: Axis   | ID: 5  | Value: -8773
+ EVENT  | Type: Axis   | ID: 5  | Value: -16772
+ EVENT  | Type: Axis   | ID: 2  | Value: -29414
+ EVENT  | Type: Axis   | ID: 5  | Value: -24770
+ EVENT  | Type: Axis   | ID: 2  | Value: -21416
+ EVENT  | Type: Axis   | ID: 5  | Value: -30446
+ EVENT  | Type: Axis   | ID: 2  | Value: -13159
+ EVENT  | Type: Axis   | ID: 5  | Value: -32767
+ EVENT  | Type: Axis   | ID: 2  | Value: -4903
+ EVENT  | Type: Axis   | ID: 2  | Value: 3354
+ EVENT  | Type: Axis   | ID: 2  | Value: 11610
+ EVENT  | Type: Axis   | ID: 2  | Value: 19867
+ EVENT  | Type: Axis   | ID: 2  | Value: 27865
+ EVENT  | Type: Axis   | ID: 2  | Value: 32767
+ EVENT  | Type: Axis   | ID: 2  | Value: 30703
+ EVENT  | Type: Axis   | ID: 2  | Value: 25027
+ EVENT  | Type: Axis   | ID: 2  | Value: 16771
+ EVENT  | Type: Axis   | ID: 2  | Value: 8514
+ EVENT  | Type: Axis   | ID: 2  | Value: 258
+ EVENT  | Type: Axis   | ID: 2  | Value: -7999
+ EVENT  | Type: Axis   | ID: 2  | Value: -16255
+ EVENT  | Type: Axis   | ID: 2  | Value: -24512
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: PRESSED
+ EVENT  | Type: Axis   | ID: 2  | Value: -30446
+ EVENT  | Type: Axis   | ID: 2  | Value: -32767
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: PRESSED
+ EVENT  | Type: Button | ID: 5  | Name: RB    | Action: RELEASED
+ EVENT  | Type: Axis   | ID: 7  | Value: -32767
+ EVENT  | Type: Axis   | ID: 6  | Value: -32767
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 6  | Value: 32767
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 6  | Value: 0
+ EVENT  | Type: Axis   | ID: 7  | Value: -32767
+ EVENT  | Type: Axis   | ID: 4  | Value: -2333
+ EVENT  | Type: Axis   | ID: 4  | Value: -5182
+ EVENT  | Type: Axis   | ID: 4  | Value: -9326
+ EVENT  | Type: Axis   | ID: 4  | Value: -13471
+ EVENT  | Type: Axis   | ID: 4  | Value: -17615
+ EVENT  | Type: Axis   | ID: 4  | Value: -21759
+ EVENT  | Type: Axis   | ID: 4  | Value: -25645
+ EVENT  | Type: Axis   | ID: 4  | Value: -29012
+ EVENT  | Type: Axis   | ID: 4  | Value: -31602
+ EVENT  | Type: Axis   | ID: 4  | Value: -32767
+ EVENT  | Type: Axis   | ID: 7  | Value: 0
+ EVENT  | Type: Axis   | ID: 4  | Value: -29530
+ EVENT  | Type: Axis   | ID: 4  | Value: -24350
+ EVENT  | Type: Axis   | ID: 4  | Value: -20464
+ EVENT  | Type: Axis   | ID: 4  | Value: -16320
+ EVENT  | Type: Axis   | ID: 4  | Value: -12176
+ EVENT  | Type: Axis   | ID: 4  | Value: -8031
+ EVENT  | Type: Axis   | ID: 4  | Value: -3887
+ EVENT  | Type: Axis   | ID: 4  | Value: -261
+ EVENT  | Type: Axis   | ID: 4  | Value: 1036

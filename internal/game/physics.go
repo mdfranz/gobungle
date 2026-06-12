@@ -26,7 +26,7 @@ func (g *Game) updatePhysics() {
 	// Handle carrier destruction sequence
 	if g.carrierDestroying {
 		g.destructionTicks--
-		
+
 		// Spawn secondary explosions across the deck
 		if g.destructionTicks%4 == 0 {
 			g.explosions = append(g.explosions, Explosion{
@@ -43,7 +43,7 @@ func (g *Game) updatePhysics() {
 			g.carrierDestroying = false
 			g.gameOver = true
 		}
-		
+
 		// Autopilot: fly back to watch the destruction
 		g.updateHelicopter()
 		g.updateExplosions()
@@ -51,6 +51,7 @@ func (g *Game) updatePhysics() {
 		return
 	}
 
+	g.applyJoystickInput()
 	g.updateHelicopter()
 	g.updateCamera() // Update scroll-window camera position
 	g.updateWeaponCooldowns()
@@ -74,11 +75,11 @@ func (g *Game) updateHelicopter() {
 	if g.carrierDestroying && !g.heli.Landed && g.heli.RespawnTimer == 0 {
 		padX := float64(g.carrier.X + g.carrier.Width/3)
 		padY := float64(g.carrier.Y + g.carrier.Height/2)
-		
+
 		dx := padX - g.heli.X
 		dy := padY - g.heli.Y
 		dist := math.Sqrt(dx*dx + dy*dy)
-		
+
 		if dist > 2.0 {
 			// Calculate desired direction
 			angle := math.Atan2(dy, dx)
@@ -89,7 +90,7 @@ func (g *Game) updateHelicopter() {
 				deg += 360
 			}
 			g.heli.Dir = int(math.Round(deg/45.0)) % 8
-			
+
 			// Move faster than normal to ensure we get there
 			speed := 1.2
 			g.heli.VX = math.Cos(angle) * speed
@@ -100,6 +101,9 @@ func (g *Game) updateHelicopter() {
 		}
 	}
 
+	if g.heli.RotationCooldown > 0 {
+		g.heli.RotationCooldown--
+	}
 	if g.heli.RespawnTimer > 0 {
 		g.heli.RespawnTimer--
 		if g.heli.RespawnTimer%4 == 0 {
